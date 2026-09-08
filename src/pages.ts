@@ -111,7 +111,16 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
             </select>
           </label>
           <label>Kategooria
-            <input id="category" value="\${s.category}">
+            <select id="category">
+              <option value="Segamini">Segamini</option>
+              <option value="Sport">Sport</option>
+              <option value="Ajalugu">Ajalugu</option>
+              <option value="Geograafia">Geograafia</option>
+              <option value="Teadus">Teadus</option>
+              <option value="Filmid ja muusika">Filmid ja muusika</option>
+              <option value="Eesti">Eesti</option>
+              <option value="Loomad ja loodus">Loomad ja loodus</option>
+            </select>
           </label>
           <label>Küsimuste arv
             <input id="count" type="number" min="3" max="20" value="\${s.count}">
@@ -121,6 +130,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       \`;
       document.getElementById('difficulty').value = s.difficulty;
       document.getElementById('difficulty').onchange = sendSettings;
+      document.getElementById('category').value = s.category;
       document.getElementById('category').onchange = sendSettings;
       document.getElementById('count').onchange = sendSettings;
       document.getElementById('startBtn').onclick = () => ws.send(JSON.stringify({ type: 'start_game' }));

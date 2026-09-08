@@ -73,10 +73,19 @@ export class GameRoom {
       server.serializeAttachment({ role: "tv" } satisfies WsAttachment);
     } else if (role === "player") {
       const name = (url.searchParams.get("name") ?? "Mängija").slice(0, 20);
-      const playerId = randomId(10);
+      const playerToken = url.searchParams.get("playerToken") ?? randomId(16);
       this.ctx.acceptWebSocket(server, ["player"]);
-      server.serializeAttachment({ role: "player", playerId, name } satisfies WsAttachment);
-      this.state.players.push({ id: playerId, name, score: 0, connected: true });
+
+      let player = this.state.players.find((p) => p.token === playerToken);
+      if (player) {
+        // Taasühendumine - sama mängija, säilita skoor.
+        player.connected = true;
+        player.name = name;
+      } else {
+        player = { id: randomId(10), token: playerToken, name, score: 0, connected: true };
+        this.state.players.push(player);
+      }
+      server.serializeAttachment({ role: "player", playerId: player.id, name: player.name } satisfies WsAttachment);
       this.ctx.waitUntil(this.persist());
     } else {
       server.close(4000, "Tundmatu roll");
@@ -84,7 +93,40 @@ export class GameRoom {
     }
 
     this.broadcastState();
+    this.sendResumeIfNeeded(server);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Kui klient (TV või mängija) ühendub keset küsimust või tulemuste kuva,
+  // saadab talle kohe hetkeseisu, mitte ei jäta teda tühja ekraani ette ootama järgmist sündmust.
+  private sendResumeIfNeeded(ws: WebSocket) {
+    if (this.state.phase === "question" && this.state.questionEndsAt) {
+      const q = this.state.questions[this.state.currentIndex];
+      if (q) {
+        ws.send(
+          JSON.stringify({
+            type: "question_start",
+            index: this.state.currentIndex,
+            total: this.state.questions.length,
+            question: q.question,
+            options: q.options,
+            endsAt: this.state.questionEndsAt,
+          })
+        );
+      }
+    } else if (this.state.phase === "reveal") {
+      const q = this.state.questions[this.state.currentIndex];
+      if (q) {
+        ws.send(
+          JSON.stringify({
+            type: "question_end",
+            correctIndex: q.correctIndex,
+            funFact: q.funFact ?? null,
+            scoreboard: this.scoreboard(),
+          })
+        );
+      }
+    }
   }
 
   private broadcast(payload: unknown, tag?: string) {

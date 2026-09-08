@@ -1,5 +1,6 @@
 export interface Player {
   id: string;
+  token: string;
   name: string;
   score: number;
   connected: boolean;

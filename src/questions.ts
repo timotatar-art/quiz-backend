@@ -55,7 +55,7 @@ Väljasta AINULT JSON massiivina, ilma lisatekstita, backtickideta ja seletustet
     throw new Error("AI vastus polnud korrektne küsimuste massiiv");
   }
 
-  return parsed.filter(
+  const filtered = parsed.filter(
     (q) =>
       typeof q.question === "string" &&
       Array.isArray(q.options) &&
@@ -64,4 +64,16 @@ Väljasta AINULT JSON massiivina, ilma lisatekstita, backtickideta ja seletustet
       q.correctIndex >= 0 &&
       q.correctIndex < 4
   );
+
+  // AI-mudelid kipuvad õiget vastust järjekindlalt samale kohale (nt A) paigutama.
+  // Segame variandid serveris juhuslikult, et see ei kordu.
+  return filtered.map((q) => {
+    const correctText = q.options[q.correctIndex];
+    const shuffled = [...q.options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return { ...q, options: shuffled, correctIndex: shuffled.indexOf(correctText) };
+  });
 }

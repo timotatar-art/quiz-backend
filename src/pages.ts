@@ -8,10 +8,12 @@ const BASE_STYLE = `
     --border: #2a2d3a;
     --green: #3ddc84;
     --red: #e2453c;
+    --blue: #3d7fe2;
   }
   * { box-sizing: border-box; }
   html, body {
-    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    margin: 0; padding: 0; color: var(--text);
+    background: radial-gradient(circle at 50% 0%, #1c2030 0%, #101219 65%);
     font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; margin: 0; }
@@ -50,7 +52,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     #app { width: 100%; max-width: 900px; text-align: center; }
     .roomcode { font-size: 20px; color: var(--text-muted); }
     .roomcode b { color: var(--amber); font-size: 32px; letter-spacing: 4px; }
-    .qr { margin: 24px auto; border-radius: 16px; overflow: hidden; width: 240px; }
+    .qr { margin: 24px auto; border-radius: 16px; overflow: hidden; width: 240px; box-shadow: 0 12px 40px rgba(240,165,39,0.15); }
     .qr img { display: block; width: 100%; }
     .players { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 24px 0; }
     .chip { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; font-size: 15px; }
@@ -59,8 +61,12 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     #startBtn { font-size: 18px; padding: 16px 40px; margin-top: 16px; }
     .question h2 { font-size: 40px; margin-bottom: 24px; }
     .options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .opt { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 14px; padding: 24px; font-size: 22px; }
-    .opt.correct { background: var(--green); color: #052912; border-color: var(--green); }
+    .opt { border: none; border-radius: 14px; padding: 24px; font-size: 22px; color: #fff; text-align: left; font-weight: 600; position: relative; opacity: 0.55; transition: opacity 0.2s ease; }
+    .opt.correct { opacity: 1; box-shadow: 0 0 0 4px #fff inset; }
+    .opt-a { background: var(--red); }
+    .opt-b { background: var(--blue); }
+    .opt-c { background: var(--amber); color: #241a05; }
+    .opt-d { background: var(--green); color: #052912; }
     .timer { font-size: 60px; color: var(--amber); font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
     .scoreboard { list-style: none; padding: 0; max-width: 400px; margin: 24px auto; text-align: left; }
     .scoreboard li { display: flex; justify-content: space-between; padding: 10px 16px; background: var(--bg-raised); border-radius: 10px; margin-bottom: 8px; }
@@ -69,7 +75,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
 
   const body = `
   <div id="app">
-    <p class="eyebrow" style="color:var(--amber)">TV Kviis</p>
+    <p class="eyebrow" style="color:var(--amber)">🎉 TV Kviis</p>
     <div id="content">Ühendamine...</div>
   </div>
   <script>
@@ -81,40 +87,57 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     let currentState = null;
     let timerInterval = null;
     let lastTickSecond = null;
+    let lastQuestionMsg = null;
+    let ws = null;
+    let reconnectAttempts = 0;
 
     // Kogu heli on genereeritud Web Audio API-ga (ostsillaatorid) - ei vaja
     // ühtegi välist audiofaili ega autoriõiguslikku muusikat.
     let audioCtx = null;
-    let bgNodes = [];
+    let bgGain = null;
+    let melodyTimer = null;
+    let melodyStep = 0;
+    const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33];
+    const melodyPattern = [0, 2, 4, 3, 5, 4, 2, 1, 0, 2, 4, 6, 4, 3, 2, 0];
 
     function initAudio() {
       if (audioCtx) return;
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
+    function playNote(freq, duration, gainNode) {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      osc.connect(g);
+      g.connect(gainNode);
+      const t = audioCtx.currentTime;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      osc.start(t);
+      osc.stop(t + duration + 0.05);
+    }
+
     function startBackgroundMusic() {
       if (!audioCtx) return;
-      const master = audioCtx.createGain();
-      master.gain.value = 0.05;
-      master.connect(audioCtx.destination);
-      const notes = [220, 277.18, 329.63];
-      bgNodes = notes.map((freq) => {
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        const g = audioCtx.createGain();
-        g.gain.value = 0.5;
-        osc.connect(g);
-        g.connect(master);
-        osc.start();
-        return osc;
-      });
-      bgNodes.push(master);
+      stopBackgroundMusic();
+      bgGain = audioCtx.createGain();
+      bgGain.gain.value = 0.1;
+      bgGain.connect(audioCtx.destination);
+      melodyStep = 0;
+      const noteLength = 0.26;
+      melodyTimer = setInterval(() => {
+        const idx = melodyPattern[melodyStep % melodyPattern.length];
+        playNote(scale[idx], noteLength * 0.85, bgGain);
+        melodyStep++;
+      }, noteLength * 1000);
     }
 
     function stopBackgroundMusic() {
-      bgNodes.forEach((n) => { try { n.stop && n.stop(); n.disconnect && n.disconnect(); } catch (e) {} });
-      bgNodes = [];
+      if (melodyTimer) { clearInterval(melodyTimer); melodyTimer = null; }
+      if (bgGain) { try { bgGain.disconnect(); } catch (e) {} bgGain = null; }
     }
 
     function playTick(urgent) {
@@ -149,18 +172,30 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       });
     }
 
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(proto + '//' + location.host + '/ws?room=' + roomCode + '&role=tv&token=' + hostToken);
+    function connect() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(proto + '//' + location.host + '/ws?room=' + roomCode + '&role=tv&token=' + hostToken);
 
-    ws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === 'room_state') { currentState = msg.state; renderSetupOrLobby(); }
-      else if (msg.type === 'generating_questions') { content.innerHTML = '<h2>Genereerin küsimusi...</h2>'; }
-      else if (msg.type === 'question_start') renderQuestion(msg);
-      else if (msg.type === 'question_end') renderReveal(msg);
-      else if (msg.type === 'game_over') renderGameOver(msg);
-      else if (msg.type === 'error') alert(msg.message);
-    };
+      ws.onopen = () => { reconnectAttempts = 0; };
+
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'room_state') { currentState = msg.state; renderSetupOrLobby(); }
+        else if (msg.type === 'generating_questions') { content.innerHTML = '<h2>✨ Genereerin küsimusi...</h2>'; }
+        else if (msg.type === 'question_start') renderQuestion(msg);
+        else if (msg.type === 'question_end') renderReveal(msg);
+        else if (msg.type === 'game_over') renderGameOver(msg);
+        else if (msg.type === 'error') alert(msg.message);
+      };
+
+      ws.onclose = () => {
+        if (reconnectAttempts < 20) {
+          reconnectAttempts++;
+          setTimeout(connect, Math.min(1000 * reconnectAttempts, 5000));
+        }
+      };
+    }
+    connect();
 
     function renderSetupOrLobby() {
       if (!currentState) return;
@@ -169,7 +204,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       content.innerHTML = \`
         <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
         <div class="qr"><img src="\${qrUrl}" alt="QR"></div>
-        <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">' + p.name + '</span>').join('')}</div>
+        <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">👤 ' + p.name + '</span>').join('')}</div>
         <div class="settings">
           <label>Raskus
             <select id="difficulty">
@@ -194,7 +229,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
             <input id="count" type="number" min="3" max="20" value="\${s.count}">
           </label>
         </div>
-        <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>Alusta mängu</button>
+        <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>🚀 Alusta mängu</button>
       \`;
       document.getElementById('difficulty').value = s.difficulty;
       document.getElementById('difficulty').onchange = sendSettings;
@@ -217,13 +252,16 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       }));
     }
 
+    const optClasses = ['opt-a', 'opt-b', 'opt-c', 'opt-d'];
+
     function renderQuestion(msg) {
       clearInterval(timerInterval);
+      lastQuestionMsg = msg;
       content.innerHTML = \`
         <div class="question">
-          <div class="timer" id="timer">10</div>
+          <div class="timer">⏱ <span id="timer">10</span></div>
           <h2>\${msg.question}</h2>
-          <div class="options">\${msg.options.map((o, i) => '<div class="opt">' + String.fromCharCode(65 + i) + '. ' + o + '</div>').join('')}</div>
+          <div class="options">\${msg.options.map((o, i) => '<div class="opt ' + optClasses[i] + ' correct">' + String.fromCharCode(65 + i) + '. ' + o + '</div>').join('')}</div>
           <p style="color:var(--text-muted); margin-top:16px;">Küsimus \${msg.index + 1} / \${msg.total} — vasta oma telefonis</p>
         </div>
       \`;
@@ -243,10 +281,14 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     function renderReveal(msg) {
       clearInterval(timerInterval);
       playReveal();
+      const optionsHtml = lastQuestionMsg
+        ? lastQuestionMsg.options.map((o, i) => '<div class="opt ' + optClasses[i] + (i === msg.correctIndex ? ' correct' : '') + '">' + String.fromCharCode(65 + i) + '. ' + o + (i === msg.correctIndex ? ' ✅' : '') + '</div>').join('')
+        : '';
       content.innerHTML = \`
         <div class="question">
-          <h2>Õige vastus: \${String.fromCharCode(65 + msg.correctIndex)}</h2>
-          \${msg.funFact ? '<p class="funfact">' + msg.funFact + '</p>' : ''}
+          <h2>✅ Õige vastus: \${String.fromCharCode(65 + msg.correctIndex)}</h2>
+          <div class="options">\${optionsHtml}</div>
+          \${msg.funFact ? '<p class="funfact">💡 ' + msg.funFact + '</p>' : ''}
           <ol class="scoreboard">\${msg.scoreboard.slice(0,8).map(p => '<li><span>' + p.name + '</span><span>' + p.score + '</span></li>').join('')}</ol>
           <p style="color:var(--text-muted); margin-top:16px;">Järgmine küsimus tuleb kohe...</p>
         </div>
@@ -258,9 +300,9 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       stopBackgroundMusic();
       playReveal();
       content.innerHTML = \`
-        <h2>Mäng läbi! 🏆</h2>
+        <h2>🏆 Mäng läbi!</h2>
         <ol class="scoreboard">\${msg.scoreboard.map(p => '<li><span>' + p.name + '</span><span>' + p.score + '</span></li>').join('')}</ol>
-        <button id="restartBtn">Mängi uuesti</button>
+        <button id="restartBtn">🔁 Mängi uuesti</button>
       \`;
       document.getElementById('restartBtn').onclick = () => ws.send(JSON.stringify({ type: 'restart' }));
     }
@@ -276,16 +318,20 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     #app { width: 100%; max-width: 420px; text-align: center; }
     input { width: 100%; font-size: 18px; padding: 14px; text-align: center; margin-bottom: 12px; }
     #joinBtn { width: 100%; font-size: 18px; padding: 14px; }
-    .opt-btn { width: 100%; font-size: 18px; padding: 20px; margin-bottom: 12px; text-align: left; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border); }
-    .opt-btn.selected { background: var(--amber); color: #241a05; }
-    .opt-btn.correct { background: var(--green); color: #052912; }
-    .opt-btn.wrong { background: var(--red); color: #fff; }
-    .score { font-size: 40px; color: var(--amber); font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+    .opt-btn { width: 100%; font-size: 18px; padding: 22px; margin-bottom: 12px; text-align: left; color: #fff; border: none; font-weight: 600; }
+    .opt-a { background: var(--red); }
+    .opt-b { background: var(--blue); }
+    .opt-c { background: var(--amber); color: #241a05; }
+    .opt-d { background: var(--green); color: #052912; }
+    .opt-btn.selected { box-shadow: 0 0 0 4px #fff inset; }
+    .opt-btn.correct { background: var(--green) !important; color: #052912 !important; box-shadow: 0 0 0 4px #fff inset; }
+    .opt-btn.wrong { opacity: 0.35; }
+    .status { color: var(--text-muted); font-size: 16px; }
   `;
 
   const body = `
   <div id="app">
-    <p style="color:var(--amber)">TV Kviis · ${roomCode}</p>
+    <p style="color:var(--amber)">🎉 TV Kviis · ${roomCode}</p>
     <div id="content">
       <input id="nameInput" placeholder="Sinu nimi" maxlength="20">
       <button id="joinBtn">Liitu mänguga</button>
@@ -294,14 +340,33 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
   <script>
     const roomCode = ${JSON.stringify(roomCode)};
     const content = document.getElementById('content');
+    const optClasses = ['opt-a', 'opt-b', 'opt-c', 'opt-d'];
     let ws = null;
     let answered = false;
+    let playerName = '';
+    let reconnectAttempts = 0;
+
+    const tokenKey = 'tvkviis_token_' + roomCode;
+    let playerToken = localStorage.getItem(tokenKey);
+    if (!playerToken) {
+      playerToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(tokenKey, playerToken);
+    }
 
     document.getElementById('joinBtn').onclick = () => {
-      const name = document.getElementById('nameInput').value.trim() || 'Mängija';
+      playerName = document.getElementById('nameInput').value.trim() || 'Mängija';
+      connect();
+    };
+
+    function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(proto + '//' + location.host + '/ws?room=' + roomCode + '&role=player&name=' + encodeURIComponent(name));
-      ws.onopen = () => { content.innerHTML = '<p>Liitusid! Oota, kuni mäng algab...</p>'; };
+      ws = new WebSocket(proto + '//' + location.host + '/ws?room=' + roomCode + '&role=player&name=' + encodeURIComponent(playerName) + '&playerToken=' + playerToken);
+
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+        content.innerHTML = '<p class="status">✅ Liitusid! Oota, kuni mäng algab...</p>';
+      };
+
       ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data);
         if (msg.type === 'question_start') renderQuestion(msg);
@@ -309,13 +374,22 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
         else if (msg.type === 'game_over') renderGameOver(msg);
         else if (msg.type === 'error') alert(msg.message);
       };
-      ws.onclose = () => { content.innerHTML = '<p>Ühendus katkes. Värskenda lehte.</p>'; };
-    };
+
+      ws.onclose = () => {
+        if (reconnectAttempts < 20) {
+          reconnectAttempts++;
+          content.innerHTML = '<p class="status">🔄 Ühendus katkes, proovin uuesti...</p>';
+          setTimeout(connect, Math.min(1000 * reconnectAttempts, 4000));
+        } else {
+          content.innerHTML = '<p class="status">Ühendus katkes. Värskenda lehte.</p>';
+        }
+      };
+    }
 
     function renderQuestion(msg) {
       answered = false;
       content.innerHTML = '<h3>' + msg.question + '</h3>' +
-        msg.options.map((o, i) => '<button class="opt-btn" data-i="' + i + '">' + String.fromCharCode(65 + i) + '. ' + o + '</button>').join('');
+        msg.options.map((o, i) => '<button class="opt-btn ' + optClasses[i] + '" data-i="' + i + '">' + String.fromCharCode(65 + i) + '. ' + o + '</button>').join('');
       document.querySelectorAll('.opt-btn').forEach(btn => {
         btn.onclick = () => {
           if (answered) return;
@@ -329,18 +403,18 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     }
 
     function renderResult(msg) {
-      const mine = document.querySelector('.opt-btn.selected');
       document.querySelectorAll('.opt-btn').forEach((b, i) => {
         if (i === msg.correctIndex) b.classList.add('correct');
         else if (b.classList.contains('selected')) b.classList.add('wrong');
+        else b.classList.add('wrong');
       });
       setTimeout(() => {
-        content.innerHTML = '<p>Oota järgmist küsimust...</p>';
+        content.innerHTML = '<p class="status">⏳ Oota järgmist küsimust...</p>';
       }, 2500);
     }
 
     function renderGameOver(msg) {
-      content.innerHTML = '<h2>Mäng läbi!</h2><p>Vaata lõpptulemust suurelt ekraanilt 🏆</p>';
+      content.innerHTML = '<h2>🏆 Mäng läbi!</h2><p class="status">Vaata lõpptulemust suurelt ekraanilt</p>';
     }
   </script>
   `;

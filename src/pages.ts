@@ -80,6 +80,74 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     const content = document.getElementById('content');
     let currentState = null;
     let timerInterval = null;
+    let lastTickSecond = null;
+
+    // Kogu heli on genereeritud Web Audio API-ga (ostsillaatorid) - ei vaja
+    // ühtegi välist audiofaili ega autoriõiguslikku muusikat.
+    let audioCtx = null;
+    let bgNodes = [];
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function startBackgroundMusic() {
+      if (!audioCtx) return;
+      const master = audioCtx.createGain();
+      master.gain.value = 0.05;
+      master.connect(audioCtx.destination);
+      const notes = [220, 277.18, 329.63];
+      bgNodes = notes.map((freq) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const g = audioCtx.createGain();
+        g.gain.value = 0.5;
+        osc.connect(g);
+        g.connect(master);
+        osc.start();
+        return osc;
+      });
+      bgNodes.push(master);
+    }
+
+    function stopBackgroundMusic() {
+      bgNodes.forEach((n) => { try { n.stop && n.stop(); n.disconnect && n.disconnect(); } catch (e) {} });
+      bgNodes = [];
+    }
+
+    function playTick(urgent) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = urgent ? 880 : 660;
+      g.gain.value = 0.09;
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      osc.stop(audioCtx.currentTime + 0.09);
+    }
+
+    function playReveal() {
+      if (!audioCtx) return;
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const t = audioCtx.currentTime + i * 0.12;
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+        osc.start(t);
+        osc.stop(t + 0.32);
+      });
+    }
 
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(proto + '//' + location.host + '/ws?room=' + roomCode + '&role=tv&token=' + hostToken);
@@ -133,7 +201,11 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       document.getElementById('category').value = s.category;
       document.getElementById('category').onchange = sendSettings;
       document.getElementById('count').onchange = sendSettings;
-      document.getElementById('startBtn').onclick = () => ws.send(JSON.stringify({ type: 'start_game' }));
+      document.getElementById('startBtn').onclick = () => {
+        initAudio();
+        startBackgroundMusic();
+        ws.send(JSON.stringify({ type: 'start_game' }));
+      };
     }
 
     function sendSettings() {
@@ -156,28 +228,35 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
         </div>
       \`;
       const timerEl = document.getElementById('timer');
+      lastTickSecond = null;
       timerInterval = setInterval(() => {
         const left = Math.max(0, Math.round((msg.endsAt - Date.now()) / 1000));
         timerEl.textContent = left;
+        if (left !== lastTickSecond) {
+          lastTickSecond = left;
+          if (left > 0) playTick(left <= 3);
+        }
         if (left <= 0) clearInterval(timerInterval);
-      }, 250);
+      }, 100);
     }
 
     function renderReveal(msg) {
       clearInterval(timerInterval);
+      playReveal();
       content.innerHTML = \`
         <div class="question">
           <h2>Õige vastus: \${String.fromCharCode(65 + msg.correctIndex)}</h2>
           \${msg.funFact ? '<p class="funfact">' + msg.funFact + '</p>' : ''}
           <ol class="scoreboard">\${msg.scoreboard.slice(0,8).map(p => '<li><span>' + p.name + '</span><span>' + p.score + '</span></li>').join('')}</ol>
-          <button id="nextBtn">Järgmine küsimus</button>
+          <p style="color:var(--text-muted); margin-top:16px;">Järgmine küsimus tuleb kohe...</p>
         </div>
       \`;
-      document.getElementById('nextBtn').onclick = () => ws.send(JSON.stringify({ type: 'next_question' }));
     }
 
     function renderGameOver(msg) {
       clearInterval(timerInterval);
+      stopBackgroundMusic();
+      playReveal();
       content.innerHTML = \`
         <h2>Mäng läbi! 🏆</h2>
         <ol class="scoreboard">\${msg.scoreboard.map(p => '<li><span>' + p.name + '</span><span>' + p.score + '</span></li>').join('')}</ol>

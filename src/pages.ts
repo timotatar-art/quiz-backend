@@ -180,7 +180,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
 
       ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data);
-        if (msg.type === 'room_state') { currentState = msg.state; renderSetupOrLobby(); }
+        if (msg.type === 'room_state') { currentState = msg.state; renderForPhase(); }
         else if (msg.type === 'generating_questions') { content.innerHTML = '<h2>✨ Genereerin küsimusi...</h2>'; }
         else if (msg.type === 'question_start') renderQuestion(msg);
         else if (msg.type === 'question_end') renderReveal(msg);
@@ -197,19 +197,21 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     }
     connect();
 
-    function renderSetupOrLobby() {
+    function renderForPhase() {
       if (!currentState) return;
-      if (currentState.phase !== 'setup') return;
+      if (currentState.phase === 'menu') renderMenu();
+      else if (currentState.phase === 'lobby') renderLobby();
+    }
+
+    function renderMenu() {
       const s = currentState.settings;
       content.innerHTML = \`
-        <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
-        <div class="qr"><img src="\${qrUrl}" alt="QR"></div>
-        <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">👤 ' + p.name + '</span>').join('')}</div>
+        <h2 style="margin-bottom:24px;">⚙️ Mängu seaded</h2>
         <div class="settings">
           <label>Raskus
             <select id="difficulty">
               <option value="lihtne">Lihtne</option>
-              <option value="keskmine" selected>Keskmine</option>
+              <option value="keskmine">Keskmine</option>
               <option value="raske">Raske</option>
             </select>
           </label>
@@ -228,14 +230,38 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
           <label>Küsimuste arv
             <input id="count" type="number" min="3" max="20" value="\${s.count}">
           </label>
+          <label>Vastamisaeg (sek)
+            <input id="answerSeconds" type="number" min="5" max="60" value="\${s.answerSeconds}">
+          </label>
+          <label>Küsimuste allikas
+            <select id="questionSource">
+              <option value="ai">AI genereerib elavalt</option>
+              <option value="bank">Valmis küsimuste pank</option>
+            </select>
+          </label>
         </div>
-        <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>🚀 Alusta mängu</button>
+        <button id="lobbyBtn" style="font-size:18px; padding:16px 40px; margin-top:16px;">Edasi ootesaali →</button>
       \`;
       document.getElementById('difficulty').value = s.difficulty;
       document.getElementById('difficulty').onchange = sendSettings;
       document.getElementById('category').value = s.category;
       document.getElementById('category').onchange = sendSettings;
       document.getElementById('count').onchange = sendSettings;
+      document.getElementById('answerSeconds').onchange = sendSettings;
+      document.getElementById('questionSource').value = s.questionSource;
+      document.getElementById('questionSource').onchange = sendSettings;
+      document.getElementById('lobbyBtn').onclick = () => ws.send(JSON.stringify({ type: 'enter_lobby' }));
+    }
+
+    function renderLobby() {
+      const s = currentState.settings;
+      content.innerHTML = \`
+        <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
+        <div class="qr"><img src="\${qrUrl}" alt="QR"></div>
+        <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">👤 ' + p.name + '</span>').join('')}</div>
+        <p style="color:var(--text-muted); margin: 12px 0 20px;">\${s.difficulty} · \${s.category} · \${s.count} küsimust · \${s.answerSeconds}s vastamiseks · \${s.questionSource === 'bank' ? 'küsimuste pank' : 'AI genereerib'}</p>
+        <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>🚀 Alusta mängu</button>
+      \`;
       document.getElementById('startBtn').onclick = () => {
         initAudio();
         startBackgroundMusic();
@@ -249,6 +275,8 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
         difficulty: document.getElementById('difficulty').value,
         category: document.getElementById('category').value,
         count: document.getElementById('count').value,
+        answerSeconds: document.getElementById('answerSeconds').value,
+        questionSource: document.getElementById('questionSource').value,
       }));
     }
 
@@ -257,9 +285,10 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     function renderQuestion(msg) {
       clearInterval(timerInterval);
       lastQuestionMsg = msg;
+      const initialLeft = Math.max(0, Math.round((msg.endsAt - Date.now()) / 1000));
       content.innerHTML = \`
         <div class="question">
-          <div class="timer">⏱ <span id="timer">10</span></div>
+          <div class="timer">⏱ <span id="timer">\${initialLeft}</span></div>
           <h2>\${msg.question}</h2>
           <div class="options">\${msg.options.map((o, i) => '<div class="opt ' + optClasses[i] + ' correct">' + String.fromCharCode(65 + i) + '. ' + o + '</div>').join('')}</div>
           <p style="color:var(--text-muted); margin-top:16px;">Küsimus \${msg.index + 1} / \${msg.total} — vasta oma telefonis</p>

@@ -1,7 +1,5 @@
 import type { RoomState, Env, WsAttachment } from "./types";
-import { generateQuestions } from "./questions";
-
-const QUESTION_SECONDS = 10;
+import { generateQuestions, drawFromBank } from "./questions";
 
 function randomId(len = 8): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -19,8 +17,8 @@ export class GameRoom {
     this.ctx = ctx;
     this.env = env;
     this.state = {
-      phase: "setup",
-      settings: { difficulty: "keskmine", category: "Segamini", count: 10 },
+      phase: "menu",
+      settings: { difficulty: "keskmine", category: "Segamini", count: 10, answerSeconds: 12, questionSource: "ai" },
       players: [],
       questions: [],
       currentIndex: -1,
@@ -169,12 +167,23 @@ export class GameRoom {
     switch (data.type) {
       case "update_settings": {
         if (attachment.role !== "tv") return;
-        if (this.state.phase !== "setup") return;
+        if (this.state.phase !== "menu") return;
         this.state.settings = {
           difficulty: data.difficulty ?? this.state.settings.difficulty,
           category: (data.category ?? this.state.settings.category).slice(0, 40),
           count: Math.min(20, Math.max(3, Number(data.count) || this.state.settings.count)),
+          answerSeconds: Math.min(60, Math.max(5, Number(data.answerSeconds) || this.state.settings.answerSeconds)),
+          questionSource: data.questionSource === "bank" ? "bank" : "ai",
         };
+        await this.persist();
+        this.broadcastState();
+        break;
+      }
+
+      case "enter_lobby": {
+        if (attachment.role !== "tv") return;
+        if (this.state.phase !== "menu") return;
+        this.state.phase = "lobby";
         await this.persist();
         this.broadcastState();
         break;
@@ -182,18 +191,26 @@ export class GameRoom {
 
       case "start_game": {
         if (attachment.role !== "tv") return;
-        if (this.state.phase !== "setup") return;
+        if (this.state.phase !== "lobby") return;
         if (this.state.players.length === 0) {
           this.broadcast({ type: "error", message: "Vähemalt üks mängija peab olema liitunud." });
           return;
         }
 
-        this.broadcast({ type: "generating_questions" });
-        try {
-          this.state.questions = await generateQuestions(this.env.ANTHROPIC_API_KEY, this.state.settings);
-          if (this.state.questions.length === 0) throw new Error("empty");
-        } catch (err) {
-          this.broadcast({ type: "error", message: "Küsimuste genereerimine ebaõnnestus. Proovi uuesti." });
+        if (this.state.settings.questionSource === "bank") {
+          this.state.questions = drawFromBank(this.state.settings);
+        } else {
+          this.broadcast({ type: "generating_questions" });
+          try {
+            this.state.questions = await generateQuestions(this.env.ANTHROPIC_API_KEY, this.state.settings);
+          } catch (err) {
+            // AI genereerimine ebaõnnestus (nt tokenid otsas) - kasuta varupanka.
+            this.state.questions = drawFromBank(this.state.settings);
+          }
+        }
+
+        if (this.state.questions.length === 0) {
+          this.broadcast({ type: "error", message: "Küsimusi ei õnnestunud hankida. Proovi uuesti." });
           return;
         }
         this.state.currentIndex = -1;
@@ -227,7 +244,7 @@ export class GameRoom {
 
       case "restart": {
         if (attachment.role !== "tv") return;
-        this.state.phase = "setup";
+        this.state.phase = "menu";
         this.state.questions = [];
         this.state.currentIndex = -1;
         this.state.answers = {};
@@ -253,7 +270,7 @@ export class GameRoom {
     }
 
     this.state.phase = "question";
-    this.state.questionEndsAt = Date.now() + QUESTION_SECONDS * 1000;
+    this.state.questionEndsAt = Date.now() + this.state.settings.answerSeconds * 1000;
     await this.persist();
     await this.ctx.storage.setAlarm(this.state.questionEndsAt);
 
@@ -273,12 +290,13 @@ export class GameRoom {
     const q = this.state.questions[this.state.currentIndex];
     if (!q) return;
 
-    const windowStart = (this.state.questionEndsAt ?? Date.now()) - QUESTION_SECONDS * 1000;
+    const totalMs = this.state.settings.answerSeconds * 1000;
+    const windowStart = (this.state.questionEndsAt ?? Date.now()) - totalMs;
     for (const player of this.state.players) {
       const answer = this.state.answers[player.id];
       if (answer && answer.choiceIndex === q.correctIndex) {
         const elapsed = Math.max(0, answer.answeredAt - windowStart);
-        const speedBonus = Math.max(0, Math.round(500 * (1 - elapsed / (QUESTION_SECONDS * 1000))));
+        const speedBonus = Math.max(0, Math.round(500 * (1 - elapsed / totalMs)));
         player.score += 500 + speedBonus;
       }
     }

@@ -13,12 +13,14 @@ export interface Question {
   funFact?: string;
 }
 
-export type Phase = "setup" | "question" | "reveal" | "ended";
+export type Phase = "menu" | "lobby" | "question" | "reveal" | "ended";
 
 export interface Settings {
   difficulty: "lihtne" | "keskmine" | "raske";
   category: string;
   count: number;
+  answerSeconds: number;
+  questionSource: "ai" | "bank";
 }
 
 export interface Answer {

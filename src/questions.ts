@@ -1,4 +1,5 @@
 import type { Question, Settings } from "./types";
+import { QUESTION_BANK } from "./bank";
 
 export async function generateQuestions(
   apiKey: string,
@@ -65,15 +66,55 @@ Väljasta AINULT JSON massiivina, ilma lisatekstita, backtickideta ja seletustet
       q.correctIndex < 4
   );
 
+  if (filtered.length === 0) {
+    throw new Error("AI ei tagastanud ühtegi kasutatavat küsimust");
+  }
+
   // AI-mudelid kipuvad õiget vastust järjekindlalt samale kohale (nt A) paigutama.
   // Segame variandid serveris juhuslikult, et see ei kordu.
-  return filtered.map((q) => {
-    const correctText = q.options[q.correctIndex];
-    const shuffled = [...q.options];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return { ...q, options: shuffled, correctIndex: shuffled.indexOf(correctText) };
-  });
+  return filtered.map(shuffleOptions);
+}
+
+function shuffleOptions(q: Question): Question {
+  const order = [0, 1, 2, 3];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return {
+    ...q,
+    options: order.map((i) => q.options[i]),
+    correctIndex: order.indexOf(q.correctIndex),
+  };
+}
+
+// Varu-küsimuste valik kohalikust pangast - kasutatakse, kui AI genereerimine
+// ebaõnnestub (nt tokenid otsas) või kui host valib küsimuste allikaks panga.
+export function drawFromBank(settings: Settings): Question[] {
+  const wantCategory = settings.category === "Segamini" ? null : settings.category;
+
+  let pool = QUESTION_BANK.filter(
+    (q) => q.dif === settings.difficulty && (wantCategory === null || q.cat === wantCategory)
+  );
+  if (pool.length < settings.count) {
+    pool = QUESTION_BANK.filter((q) => q.dif === settings.difficulty);
+  }
+  if (pool.length < settings.count) {
+    pool = QUESTION_BANK.slice();
+  }
+
+  const shuffledPool = [...pool];
+  for (let i = shuffledPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
+  }
+
+  return shuffledPool.slice(0, settings.count).map((bq) =>
+    shuffleOptions({
+      question: bq.q,
+      options: [...bq.o],
+      correctIndex: bq.c,
+      funFact: bq.f,
+    })
+  );
 }

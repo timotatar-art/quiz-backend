@@ -1,5 +1,5 @@
 import type { RoomState, Env, WsAttachment } from "./types";
-import { generateQuestions, drawFromBank } from "./questions";
+import { generateQuestions, drawFromBank, addToLibrary } from "./questions";
 
 function randomId(len = 8): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -198,14 +198,16 @@ export class GameRoom {
         }
 
         if (this.state.settings.questionSource === "bank") {
-          this.state.questions = drawFromBank(this.state.settings);
+          this.state.questions = await drawFromBank(this.env, this.state.settings);
         } else {
           this.broadcast({ type: "generating_questions" });
           try {
             this.state.questions = await generateQuestions(this.env.ANTHROPIC_API_KEY, this.state.settings);
+            // Täienda kasvavat küsimuste raamatukogu, et neid saaks tulevikus taaskasutada.
+            this.ctx.waitUntil(addToLibrary(this.env, this.state.settings, this.state.questions));
           } catch (err) {
             // AI genereerimine ebaõnnestus (nt tokenid otsas) - kasuta varupanka.
-            this.state.questions = drawFromBank(this.state.settings);
+            this.state.questions = await drawFromBank(this.env, this.state.settings);
           }
         }
 

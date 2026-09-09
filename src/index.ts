@@ -1,8 +1,10 @@
 import type { Env } from "./types";
 import { GameRoom } from "./gameRoom";
+import { QuestionLibrary } from "./questionLibrary";
 import { renderTvPage, renderPlayerPage, renderHomePage } from "./pages";
+import { LOGO_PNG_BASE64 } from "./logo";
 
-export { GameRoom };
+export { GameRoom, QuestionLibrary };
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // ilma O,0,I,1 - vähem segadust ekraanilt lugedes
 
@@ -17,6 +19,14 @@ function generateRoomCode(len = 4): string {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // LuVu game logo, kasutatakse TV ja mängija lehtedel.
+    if (url.pathname === "/logo.png") {
+      const bytes = Uint8Array.from(atob(LOGO_PNG_BASE64), (c) => c.charCodeAt(0));
+      return new Response(bytes, {
+        headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
+      });
+    }
 
     // Uue TV-seansi loomine: genereeri ruumikood, algata Durable Object, kuva TV leht.
     if (url.pathname === "/tv") {

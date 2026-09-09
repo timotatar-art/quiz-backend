@@ -6,9 +6,17 @@ compatibility_date = "2026-09-01"
 name = "GAME_ROOM"
 class_name = "GameRoom"
 
+[[durable_objects.bindings]]
+name = "QUESTION_LIBRARY"
+class_name = "QuestionLibrary"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["QuestionLibrary"]
 
 # ANTHROPIC_API_KEY seatakse saladusena (secret), mitte siia faili:
 #   npx wrangler secret put ANTHROPIC_API_KEY

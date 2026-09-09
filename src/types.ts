@@ -42,6 +42,7 @@ export interface RoomState {
 
 export interface Env {
   GAME_ROOM: DurableObjectNamespace;
+  QUESTION_LIBRARY: DurableObjectNamespace;
   ANTHROPIC_API_KEY: string;
 }
 

@@ -75,7 +75,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
 
   const body = `
   <div id="app">
-    <p class="eyebrow" style="color:var(--amber)">🎉 TV Kviis</p>
+    <p class="eyebrow" style="color:var(--amber); display:flex; align-items:center; justify-content:center; gap:10px;"><img src="/logo.png" alt="" style="height:36px; width:36px; border-radius:8px;">LuVu game</p>
     <div id="content">Ühendamine...</div>
   </div>
   <script>
@@ -352,7 +352,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
   </script>
   `;
 
-  return shell("TV Kviis", body, style);
+  return shell("LuVu game", body, style);
 }
 
 export function renderPlayerPage(roomCode: string, origin: string): string {
@@ -374,7 +374,7 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
 
   const body = `
   <div id="app">
-    <p style="color:var(--amber)">🎉 TV Kviis · ${roomCode}</p>
+    <p style="color:var(--amber); display:flex; align-items:center; justify-content:center; gap:8px;"><img src="/logo.png" alt="" style="height:28px; width:28px; border-radius:6px;">LuVu game · ${roomCode}</p>
     <div id="content">
       <input id="nameInput" placeholder="Sinu nimi" maxlength="20">
       <button id="joinBtn">Liitu mänguga</button>
@@ -467,9 +467,9 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
 
 export function renderHomePage(): string {
   return shell(
-    "TV Kviis backend",
+    "LuVu game backend",
     `<div style="padding:40px; text-align:center;">
-      <h1>TV Kviis backend töötab</h1>
+      <h1>LuVu game backend töötab</h1>
       <p style="color:var(--text-muted)">See on API/WebSocket server. TV rakendus peaks avama <code>/tv</code>.</p>
     </div>`
   );

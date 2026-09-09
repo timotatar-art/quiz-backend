@@ -1,0 +1,130 @@
+export interface BankQuestion {
+  q: string;
+  o: [string, string, string, string];
+  c: number;
+  f: string;
+  cat: string;
+  dif: "lihtne" | "keskmine" | "raske";
+}
+
+// Iga küsimuse õige vastus on alati indeksis 0 - segamine toimub jagamise hetkel (shuffleOptions).
+export const QUESTION_BANK: BankQuestion[] = [
+  // --- SPORT ---
+  { q: "Mitu mängijat on jalgpallimeeskonnas väljakul?", o: ["11", "9", "13", "7"], c: 0, f: "Iga meeskond mängib 11 mängijaga, sh väravavaht.", cat: "Sport", dif: "lihtne" },
+  { q: "Mis spordialal kasutatakse reketit ja sulgpalli?", o: ["Sulgpall", "Jalgpall", "Ujumine", "Kergejõustik"], c: 0, f: "Sulgpallis on sulg kiiruselt kiireim liikuv objekt spordis.", cat: "Sport", dif: "lihtne" },
+  { q: "Mitu ringi on olümpiarõngastel?", o: ["5", "4", "6", "3"], c: 0, f: "Rõngad sümboliseerivad viit maailma asustatud mandrit.", cat: "Sport", dif: "lihtne" },
+  { q: "Millisel spordialal võideldakse tiitli nimel poksikindaid kandes?", o: ["Poks", "Ujumine", "Golf", "Male"], c: 0, f: "Poksis peetakse tiitlivõitlusi tavaliselt 12 raundis.", cat: "Sport", dif: "lihtne" },
+  { q: "Mis pallimänguga seostub Wimbledoni turniir?", o: ["Tennis", "Jalgpall", "Korvpall", "Rugby"], c: 0, f: "Wimbledon on ainus Grand Slam, mida mängitakse muruväljakul.", cat: "Sport", dif: "lihtne" },
+  { q: "Millisel suveolümpial osales taasiseseisvunud Eesti esimest korda oma lipu all?", o: ["1992 Barcelona", "1988 Seoul", "1996 Atlanta", "2000 Sydney"], c: 0, f: "Eesti oli iseseisvana olümpial osalenud ka enne sõda, 1920. ja 1936. aastal.", cat: "Sport", dif: "keskmine" },
+  { q: "Milline riik võitis 2018. aasta jalgpalli maailmameistrivõistlused?", o: ["Prantsusmaa", "Horvaatia", "Saksamaa", "Brasiilia"], c: 0, f: "Finaalis alistas Prantsusmaa Horvaatia 4:2.", cat: "Sport", dif: "keskmine" },
+  { q: "Mitu setti peab meeste Grand Slami finalist tavaliselt võitma viiest?", o: ["3", "2", "4", "1"], c: 0, f: "Naiste turniiridel mängitakse enamasti kolmest settist, kus vaja on kaks võitu.", cat: "Sport", dif: "keskmine" },
+  { q: "Millisel spordialal kasutatakse terminit \"hole in one\"?", o: ["Golf", "Bowling", "Kriket", "Snuuker"], c: 0, f: "See tähendab palli august sisse löömist ühe löögiga.", cat: "Sport", dif: "keskmine" },
+  { q: "Mitu punkti annab korvpallis kolmese joone tagant visatud tabamus?", o: ["3", "2", "1", "5"], c: 0, f: "Kolmese joone kaugus korvist on umbes 6,75 meetrit.", cat: "Sport", dif: "keskmine" },
+  { q: "Kes on olümpiamängude ajaloo edukaim sportlane medalite arvu poolest?", o: ["Michael Phelps", "Usain Bolt", "Larisa Latõnina", "Carl Lewis"], c: 0, f: "Ujuja Michael Phelps on kogunud 28 olümpiamedalit, neist 23 kuldset.", cat: "Sport", dif: "raske" },
+  { q: "Millisel aastal toimusid esimesed tänapäevased olümpiamängud?", o: ["1896", "1900", "1924", "1886"], c: 0, f: "Mängud toimusid Ateenas, Kreekas.", cat: "Sport", dif: "raske" },
+  { q: "Mitu Grand Slami üksikmängu tiitlit on Serena Williams võitnud?", o: ["23", "21", "25", "19"], c: 0, f: "See on tänapäeva (Open Era) ajastu rekord naiste seas.", cat: "Sport", dif: "raske" },
+  { q: "Milline riik võõrustas esimest FIFA jalgpalli maailmameistrivõistlust 1930. aastal?", o: ["Uruguay", "Itaalia", "Prantsusmaa", "Brasiilia"], c: 0, f: "Uruguay võitis ka ise selle esimese turniiri.", cat: "Sport", dif: "raske" },
+  { q: "Mitu mängijat on väljakul rugby liidu (union) täispikkuses meeskonnas?", o: ["15", "13", "11", "7"], c: 0, f: "Rugby liiga (league) versioonis mängitakse 13 mängijaga.", cat: "Sport", dif: "raske" },
+
+  // --- AJALUGU ---
+  { q: "Mis aastal algas Teine maailmasõda?", o: ["1939", "1914", "1945", "1929"], c: 0, f: "Sõda algas Saksamaa kallaletungiga Poolale.", cat: "Ajalugu", dif: "lihtne" },
+  { q: "Kes oli Eesti esimene president?", o: ["Konstantin Päts", "Lennart Meri", "Jüri Uluots", "August Rei"], c: 0, f: "Presidendi ametikoht loodi 1938. aasta põhiseadusega.", cat: "Ajalugu", dif: "lihtne" },
+  { q: "Millisel aastal langes Berliini müür?", o: ["1989", "1991", "1985", "1993"], c: 0, f: "Müür jagas linna kaheks 1961. aastast alates.", cat: "Ajalugu", dif: "lihtne" },
+  { q: "Kes avastas Euroopa jaoks Ameerika mandri 1492. aastal?", o: ["Christoph Kolumbus", "Vasco da Gama", "Ferdinand Magalhães", "James Cook"], c: 0, f: "Kolumbus arvas algul, et jõudis Indiasse.", cat: "Ajalugu", dif: "lihtne" },
+  { q: "Mis aastal algas Prantsuse revolutsioon?", o: ["1789", "1776", "1804", "1815"], c: 0, f: "Revolutsioon algas Bastille' vangla vallutamisega.", cat: "Ajalugu", dif: "lihtne" },
+  { q: "Millisel aastal lõppes Esimene maailmasõda?", o: ["1918", "1919", "1917", "1920"], c: 0, f: "Relvarahu sõlmiti 11. novembril.", cat: "Ajalugu", dif: "keskmine" },
+  { q: "Kes juhtis Nõukogude Liitu Teise maailmasõja ajal?", o: ["Jossif Stalin", "Vladimir Lenin", "Nikita Hruštšov", "Leonid Brežnev"], c: 0, f: "Stalin oli riigi juht alates 1920. aastate lõpust kuni surmani 1953.", cat: "Ajalugu", dif: "keskmine" },
+  { q: "Millisel aastal taastati Eesti Vabariigi iseseisvus?", o: ["1991", "1990", "1992", "1989"], c: 0, f: "Iseseisvus kuulutati välja 20. augustil 1991.", cat: "Ajalugu", dif: "keskmine" },
+  { q: "Kes oli Rooma impeeriumi esimene keiser?", o: ["Augustus", "Julius Caesar", "Nero", "Traianus"], c: 0, f: "Julius Caesar oli diktaator, mitte ametlikult keiser.", cat: "Ajalugu", dif: "keskmine" },
+  { q: "Millisel sajandil toimusid peamised ristisõjad?", o: ["11.-13. sajand", "8.-9. sajand", "15.-16. sajand", "5.-6. sajand"], c: 0, f: "Esimene ristisõda algas aastal 1096.", cat: "Ajalugu", dif: "keskmine" },
+  { q: "Millisel aastal algas Vene-Jaapani sõda?", o: ["1904", "1900", "1910", "1895"], c: 0, f: "Sõda lõppes Jaapani üllatava võiduga.", cat: "Ajalugu", dif: "raske" },
+  { q: "Kes juhtis Eesti delegatsiooni Tartu rahulepingu sõlmimisel 1920?", o: ["Jaan Poska", "Konstantin Päts", "Johan Laidoner", "Jaan Tõnisson"], c: 0, f: "Tartu rahu tunnustas Eesti Vabariigi iseseisvust.", cat: "Ajalugu", dif: "raske" },
+  { q: "Millisel aastal toimus Viini kongress?", o: ["1815", "1789", "1848", "1830"], c: 0, f: "Kongress korraldas Euroopa piirid ümber pärast Napoleoni sõdu.", cat: "Ajalugu", dif: "raske" },
+  { q: "Kes oli Bütsantsi (Ida-Rooma) impeeriumi viimane keiser?", o: ["Constantinus XI", "Justinianus I", "Konstantin Suur", "Basileios II"], c: 0, f: "Ta hukkus Konstantinoopoli langemisel 1453.", cat: "Ajalugu", dif: "raske" },
+  { q: "Millisel aastal vallutasid Osmanid Konstantinoopoli?", o: ["1453", "1400", "1500", "1350"], c: 0, f: "See sündmus tähistab paljude jaoks keskaja lõppu.", cat: "Ajalugu", dif: "raske" },
+
+  // --- GEOGRAAFIA ---
+  { q: "Mis on maailma suurim ookean?", o: ["Vaikne ookean", "Atlandi ookean", "India ookean", "Põhja-Jäämeri"], c: 0, f: "Vaikne ookean katab üle kolmandiku Maa pindalast.", cat: "Geograafia", dif: "lihtne" },
+  { q: "Milline on maailma pikim jõgi?", o: ["Niilus", "Amazonas", "Jangtse", "Mississippi"], c: 0, f: "Niiluse pikkus on ligikaudu 6650 kilomeetrit.", cat: "Geograafia", dif: "lihtne" },
+  { q: "Milline on Eesti pealinn?", o: ["Tallinn", "Tartu", "Pärnu", "Narva"], c: 0, f: "Tallinna vanalinn kuulub UNESCO maailmapärandi nimekirja.", cat: "Geograafia", dif: "lihtne" },
+  { q: "Mitu mandrit on tavapäraselt Maal?", o: ["7", "5", "6", "8"], c: 0, f: "Mõnes käsitluses loetakse Euraasiat üheks mandriks, mitte kaheks.", cat: "Geograafia", dif: "lihtne" },
+  { q: "Milline on maailma kõrgeim mägi merepinnast?", o: ["Everest", "K2", "Kilimanjaro", "Mont Blanc"], c: 0, f: "Everesti tipp on 8849 meetrit merepinnast.", cat: "Geograafia", dif: "lihtne" },
+  { q: "Milline on pindalalt maailma suurim kõrb?", o: ["Antarktika", "Sahara", "Gobi", "Kalahari"], c: 0, f: "Kõrbeks loetakse ala vähese sademete hulga järgi, mitte kuumuse järgi.", cat: "Geograafia", dif: "keskmine" },
+  { q: "Milline riik on pindalalt maailma suurim?", o: ["Venemaa", "Kanada", "Hiina", "USA"], c: 0, f: "Venemaa ulatub üle 11 ajavööndi.", cat: "Geograafia", dif: "keskmine" },
+  { q: "Mis laht eraldab Eestit ja Soomet?", o: ["Soome laht", "Botnia laht", "Liivi laht", "Riia laht"], c: 0, f: "Lahe laius Tallinna ja Helsingi vahel on umbes 80 km.", cat: "Geograafia", dif: "keskmine" },
+  { q: "Milline on Aafrika kõrgeim mägi?", o: ["Kilimanjaro", "Kenya mägi", "Atlas", "Ruwenzori"], c: 0, f: "Kilimanjaro asub Tansaanias ja on kustunud vulkaan.", cat: "Geograafia", dif: "keskmine" },
+  { q: "Milline on maailma väikseim riik pindalalt?", o: ["Vatikan", "Monaco", "San Marino", "Liechtenstein"], c: 0, f: "Vatikani pindala on vaid u 0,44 km².", cat: "Geograafia", dif: "keskmine" },
+  { q: "Milline on maailma sügavaim koht ookeanis?", o: ["Mariaani süvik", "Tonga süvik", "Puerto Rico süvik", "Java süvik"], c: 0, f: "Süviku sügavaim punkt ulatub peaaegu 11 kilomeetrini.", cat: "Geograafia", dif: "raske" },
+  { q: "Milline linn tuntakse maailma kõrgeima pealinnana merepinnast?", o: ["La Paz", "Quito", "Bogotá", "Thimphu"], c: 0, f: "La Paz asub Boliivias, üle 3600 meetri merepinnast.", cat: "Geograafia", dif: "raske" },
+  { q: "Milline kanal ühendab Vahemere ja Punase mere?", o: ["Suessi kanal", "Panama kanal", "Kieli kanal", "Korintose kanal"], c: 0, f: "Kanal avati 1869. aastal ja lühendab teekonda Aasiasse oluliselt.", cat: "Geograafia", dif: "raske" },
+  { q: "Milline on maailma suurim saar (Austraaliat mandrina arvestamata)?", o: ["Gröönimaa", "Uus-Guinea", "Madagaskar", "Borneo"], c: 0, f: "Suurem osa Gröönimaast on kaetud jääkilbiga.", cat: "Geograafia", dif: "raske" },
+  { q: "Millisel laiuskraadil asub ekvaator?", o: ["0°", "90°", "45°", "23,5°"], c: 0, f: "Ekvaator jagab Maa põhja- ja lõunapoolkeraks.", cat: "Geograafia", dif: "raske" },
+
+  // --- TEADUS ---
+  { q: "Mis on vee keemiline valem?", o: ["H2O", "CO2", "O2", "NaCl"], c: 0, f: "Vesiniku ja hapniku aatomid moodustavad veemolekuli.", cat: "Teadus", dif: "lihtne" },
+  { q: "Mitu planeeti on meie Päikesesüsteemis?", o: ["8", "9", "7", "10"], c: 0, f: "Pluuto arvati 2006. aastal ümber kääbusplaneediks.", cat: "Teadus", dif: "lihtne" },
+  { q: "Milline organ pumpab keha veres ringi?", o: ["Süda", "Kopsud", "Maks", "Neerud"], c: 0, f: "Täiskasvanu süda lööb rahuolekus umbes 60-100 korda minutis.", cat: "Teadus", dif: "lihtne" },
+  { q: "Mis gaasi hingavad inimesed sisse elus püsimiseks?", o: ["Hapnik", "Süsihappegaas", "Lämmastik", "Vesinik"], c: 0, f: "Väljahingatav õhk sisaldab rohkem süsihappegaasi kui sissehingatav.", cat: "Teadus", dif: "lihtne" },
+  { q: "Kes sõnastas gravitatsiooniseaduse tuntud õuna kukkumise looga?", o: ["Isaac Newton", "Albert Einstein", "Galileo Galilei", "Charles Darwin"], c: 0, f: "Newton avaldas oma teooria 1687. aastal.", cat: "Teadus", dif: "lihtne" },
+  { q: "Milline on keemilise elemendi sümbol kullale?", o: ["Au", "Ag", "Fe", "Gd"], c: 0, f: "Sümbol tuleb ladinakeelsest sõnast \"aurum\".", cat: "Teadus", dif: "keskmine" },
+  { q: "Mitu kromosoomipaari on tavaliselt inimesel?", o: ["23", "22", "24", "20"], c: 0, f: "Kokku annab see 46 kromosoomi.", cat: "Teadus", dif: "keskmine" },
+  { q: "Milline planeet on Päikesesüsteemis Päikesele kõige lähemal?", o: ["Merkuur", "Veenus", "Maa", "Marss"], c: 0, f: "Merkuuril puudub oluline atmosfäär.", cat: "Teadus", dif: "keskmine" },
+  { q: "Kes arendas välja evolutsiooniteooria loodusliku valiku kaudu?", o: ["Charles Darwin", "Gregor Mendel", "Louis Pasteur", "Isaac Newton"], c: 0, f: "Tema teos \"Liikide tekkimisest\" ilmus 1859. aastal.", cat: "Teadus", dif: "keskmine" },
+  { q: "Mis on valguse kiirus vaakumis ligikaudu?", o: ["300 000 km/s", "150 000 km/s", "3000 km/s", "1 000 000 km/s"], c: 0, f: "Täpsem väärtus on 299 792 kilomeetrit sekundis.", cat: "Teadus", dif: "keskmine" },
+  { q: "Kes sõnastas erirelatiivsusteooria?", o: ["Albert Einstein", "Isaac Newton", "Niels Bohr", "Max Planck"], c: 0, f: "Teooria avaldati 1905. aastal.", cat: "Teadus", dif: "raske" },
+  { q: "Milline element on perioodilisustabelis aatomnumbriga 1?", o: ["Vesinik", "Heelium", "Liitium", "Hapnik"], c: 0, f: "Vesinik on universumi levinuim keemiline element.", cat: "Teadus", dif: "raske" },
+  { q: "Millise auhinnaga tunnustati DNA topeltheeliksi struktuuri avastanud teadlasi?", o: ["Nobeli preemia", "Fieldsi medal", "Turingi auhind", "Pulitzeri auhind"], c: 0, f: "Watson ja Crick said auhinna 1962. aastal koos Maurice Wilkinsiga.", cat: "Teadus", dif: "raske" },
+  { q: "Milline osake kannab negatiivset elektrilaengut ja tiirleb aatomituuma ümber?", o: ["Elektron", "Prooton", "Neutron", "Footon"], c: 0, f: "Prootonid ja neutronid asuvad aatomi tuumas.", cat: "Teadus", dif: "raske" },
+  { q: "Mitu luud on täiskasvanud inimese kehas ligikaudu?", o: ["206", "150", "300", "180"], c: 0, f: "Vastsündinul on rohkem luid, mis kasvades osaliselt kokku sulavad.", cat: "Teadus", dif: "raske" },
+
+  // --- FILMID JA MUUSIKA ---
+  { q: "Milline animafilm räägib lõvipojast nimega Simba?", o: ["Lõvikuningas", "Shrek", "Vaiana", "Frozen"], c: 0, f: "Film ilmus algselt 1994. aastal.", cat: "Filmid ja muusika", dif: "lihtne" },
+  { q: "Mis muusikariist on tuntud 88 klahviga?", o: ["Klaver", "Kitarr", "Viiul", "Trummid"], c: 0, f: "Klahvidest 52 on valged ja 36 mustad.", cat: "Filmid ja muusika", dif: "lihtne" },
+  { q: "Milline superkangelane kannab punast-sinist kostüümi ja ronib seintel?", o: ["Ämblikmees", "Batman", "Superman", "Iron Man"], c: 0, f: "Tegelase lõi Stan Lee koos Steve Ditkoga.", cat: "Filmid ja muusika", dif: "lihtne" },
+  { q: "Milline bänd laulis loo \"Bohemian Rhapsody\"?", o: ["Queen", "The Beatles", "ABBA", "Rolling Stones"], c: 0, f: "Laulu kirjutas Freddie Mercury.", cat: "Filmid ja muusika", dif: "lihtne" },
+  { q: "Milline filmisari räägib võlurist nimega Harry?", o: ["Harry Potter", "Sõrmuste isand", "Narnia lood", "Percy Jackson"], c: 0, f: "Raamatute autor on J.K. Rowling.", cat: "Filmid ja muusika", dif: "lihtne" },
+  { q: "Kes lavastas 1997. aasta filmi \"Titanic\"?", o: ["James Cameron", "Steven Spielberg", "Christopher Nolan", "Martin Scorsese"], c: 0, f: "Film võitis 11 Oscarit.", cat: "Filmid ja muusika", dif: "keskmine" },
+  { q: "Millisest riigist pärineb ansambel ABBA?", o: ["Rootsi", "Norra", "Soome", "Taani"], c: 0, f: "Bänd võitis Eurovisiooni 1974. aastal looga \"Waterloo\".", cat: "Filmid ja muusika", dif: "keskmine" },
+  { q: "Milline film võitis 2020. aastal parima filmi Oscari?", o: ["Parasite", "1917", "Joker", "Once Upon a Time in Hollywood"], c: 0, f: "See oli esimene võõrkeelne film, mis selle auhinna võitis.", cat: "Filmid ja muusika", dif: "keskmine" },
+  { q: "Kes kehastas Jack Sparrowd filmisarjas \"Kariibi mere piraadid\"?", o: ["Johnny Depp", "Orlando Bloom", "Geoffrey Rush", "Keira Knightley"], c: 0, f: "Tegelaskuju inspireeris osaliselt Keith Richards.", cat: "Filmid ja muusika", dif: "keskmine" },
+  { q: "Milline laulja on tuntud kui \"King of Pop\"?", o: ["Michael Jackson", "Elvis Presley", "Prince", "Freddie Mercury"], c: 0, f: "Tema album \"Thriller\" on kõigi aegade enimmüüdud album.", cat: "Filmid ja muusika", dif: "keskmine" },
+  { q: "Kes kirjutas muusika filmisarjale \"Tähesõjad\"?", o: ["John Williams", "Hans Zimmer", "John Barry", "Ennio Morricone"], c: 0, f: "Sama helilooja kirjutas muusika ka \"Indiana Jonesile\".", cat: "Filmid ja muusika", dif: "raske" },
+  { q: "Milline helilooja kirjutas ooperi \"Aida\"?", o: ["Giuseppe Verdi", "Wolfgang Amadeus Mozart", "Giacomo Puccini", "Richard Wagner"], c: 0, f: "Ooper esietendus Kairos 1871. aastal.", cat: "Filmid ja muusika", dif: "raske" },
+  { q: "Millisel aastal esilinastus esimene täispikk helifilm \"The Jazz Singer\"?", o: ["1927", "1920", "1935", "1915"], c: 0, f: "Film tähistas ülemineku algust vaikfilmidelt helifilmidele.", cat: "Filmid ja muusika", dif: "raske" },
+  { q: "Mitu liiget kuulus The Beatlesi tuntumasse (klassikalisse) koosseisu?", o: ["4", "5", "3", "6"], c: 0, f: "Koosseisu kuulusid Lennon, McCartney, Harrison ja Starr.", cat: "Filmid ja muusika", dif: "raske" },
+  { q: "Milline helilooja komponeeris oma 9. sümfoonia olles peaaegu täiesti kurt?", o: ["Ludwig van Beethoven", "Wolfgang Amadeus Mozart", "Johann Sebastian Bach", "Franz Schubert"], c: 0, f: "Sümfoonia esiettekanne oli 1824. aastal Viinis.", cat: "Filmid ja muusika", dif: "raske" },
+
+  // --- EESTI ---
+  { q: "Millises järjekorras on Eesti lipu värvid ülevalt alla?", o: ["Sinine-must-valge", "Must-sinine-valge", "Valge-sinine-must", "Sinine-valge-must"], c: 0, f: "Lipu värvide tähendusi on aja jooksul erinevalt tõlgendatud.", cat: "Eesti", dif: "lihtne" },
+  { q: "Milline on Eesti suurim saar?", o: ["Saaremaa", "Hiiumaa", "Muhu", "Vormsi"], c: 0, f: "Saaremaa pindala on üle 2600 km².", cat: "Eesti", dif: "lihtne" },
+  { q: "Millises linnas asub Eesti vanim ülikool?", o: ["Tartu", "Tallinn", "Pärnu", "Narva"], c: 0, f: "Tartu Ülikool asutati 1632. aastal.", cat: "Eesti", dif: "lihtne" },
+  { q: "Mis rahaühikut kasutati Eestis enne eurot?", o: ["Eesti kroon", "Eesti mark", "Eesti taaler", "Eesti riigimark"], c: 0, f: "Kroon taastati 1992. aastal ja euro võeti kasutusele 2011.", cat: "Eesti", dif: "lihtne" },
+  { q: "Milline meri/laht piirneb Eestiga põhjast?", o: ["Soome laht", "Läänemeri", "Riia laht", "Peipsi järv"], c: 0, f: "Soome lahe teisel kaldal asub Soome.", cat: "Eesti", dif: "lihtne" },
+  { q: "Millisel aastal liitus Eesti Euroopa Liiduga?", o: ["2004", "2000", "2007", "1995"], c: 0, f: "Samal aastal liitus Eesti ka NATO-ga.", cat: "Eesti", dif: "keskmine" },
+  { q: "Milline on Eesti suurim järv?", o: ["Peipsi järv", "Võrtsjärv", "Ülemiste järv", "Endla järv"], c: 0, f: "Peipsi järv on jagatud Eesti ja Venemaa vahel.", cat: "Eesti", dif: "keskmine" },
+  { q: "Kes oli Eesti peaminister taasiseseisvumise ajal aastatel 1990-1992?", o: ["Edgar Savisaar", "Mart Laar", "Tiit Vähi", "Andres Tarand"], c: 0, f: "Tema valitsuse ajal kuulutati välja iseseisvuse taastamine.", cat: "Eesti", dif: "keskmine" },
+  { q: "Millisel kuupäeval tähistatakse Eesti Vabariigi aastapäeva?", o: ["24. veebruar", "20. august", "23. juuni", "1. detsember"], c: 0, f: "Iseseisvusmanifest kuulutati välja 1918. aastal.", cat: "Eesti", dif: "keskmine" },
+  { q: "Ligikaudu mitu meetrit kõrge on Eesti kõrgeim koht Suur Munamägi?", o: ["317 m", "250 m", "400 m", "180 m"], c: 0, f: "Suur Munamägi asub Võrumaal.", cat: "Eesti", dif: "keskmine" },
+  { q: "Millisel aastal kuulutati esmakordselt välja Eesti Vabariigi iseseisvus?", o: ["1918", "1920", "1917", "1921"], c: 0, f: "Manifest loeti ette 24. veebruaril Tallinnas.", cat: "Eesti", dif: "raske" },
+  { q: "Kes oli Eesti Vabariigi esimene riigivanem?", o: ["Konstantin Päts", "Jaan Tõnisson", "Otto Strandman", "August Rei"], c: 0, f: "Riigivanema ametikoht eelnes hilisemale presidendi ametile.", cat: "Eesti", dif: "raske" },
+  { q: "Mis nime kandis periood, mil Eesti liikus laulupidudega rahumeelselt iseseisvuse taastamise poole?", o: ["Laulev revolutsioon", "Vaikiv ajastu", "Sula periood", "Ärkamisaeg"], c: 0, f: "Periood sai alguse 1988. aastal.", cat: "Eesti", dif: "raske" },
+  { q: "Kes on eepose \"Kalevipoeg\" koostaja?", o: ["Friedrich Reinhold Kreutzwald", "Anton Hansen Tammsaare", "Lydia Koidula", "Jaan Kross"], c: 0, f: "Eepos ilmus esmakordselt aastatel 1857-1861.", cat: "Eesti", dif: "raske" },
+  { q: "Millisel aastal astus Eesti NATO liikmeks?", o: ["2004", "2002", "1999", "2007"], c: 0, f: "See juhtus samal kevadel kui Euroopa Liiduga liitumine.", cat: "Eesti", dif: "raske" },
+
+  // --- LOOMAD JA LOODUS ---
+  { q: "Milline on maailma suurim looma liik?", o: ["Sinivaal", "Elevant", "Kaelkirjak", "Karu"], c: 0, f: "Sinivaal võib kaaluda üle 150 tonni.", cat: "Loomad ja loodus", dif: "lihtne" },
+  { q: "Milline loom on tuntud kui \"kõrbelaev\"?", o: ["Kaamel", "Hobune", "Eesel", "Lama"], c: 0, f: "Kaamel suudab ilma veeta läbi ajada mitu nädalat.", cat: "Loomad ja loodus", dif: "lihtne" },
+  { q: "Milline lind ei oska lennata, kuid ujub väga hästi?", o: ["Pingviin", "Kotkas", "Pääsuke", "Öökull"], c: 0, f: "Pingviinide tiivad on aja jooksul muutunud uimedeks.", cat: "Loomad ja loodus", dif: "lihtne" },
+  { q: "Milline lind on Eesti rahvuslind?", o: ["Suitsupääsuke", "Kajakas", "Kotkas", "Öökull"], c: 0, f: "Suitsupääsuke valiti rahvuslinnuks 1960. aastatel.", cat: "Loomad ja loodus", dif: "lihtne" },
+  { q: "Milline loom muudab oma nahavärvi ümbritseva keskkonna järgi?", o: ["Kameeleon", "Iguaan", "Krokodill", "Madu"], c: 0, f: "Värvimuutus sõltub ka looma tujust ja temperatuurist, mitte ainult maskeerimisest.", cat: "Loomad ja loodus", dif: "lihtne" },
+  { q: "Milline on kiireim maismaaloom?", o: ["Gepard", "Lõvi", "Hobune", "Antiloop"], c: 0, f: "Gepard suudab lühikest aega joosta üle 100 km/h.", cat: "Loomad ja loodus", dif: "keskmine" },
+  { q: "Mitu kompimisjalga on kaheksajalal?", o: ["8", "6", "10", "4"], c: 0, f: "Kaheksajalgadel on väga arenenud närvisüsteem.", cat: "Loomad ja loodus", dif: "keskmine" },
+  { q: "Milline putukas toodab mett?", o: ["Meemesilane", "Herilane", "Kimalane", "Sipelgas"], c: 0, f: "Ühest tarust saab aastas keskmiselt 15-20 kg mett.", cat: "Loomad ja loodus", dif: "keskmine" },
+  { q: "Milline loom kannab oma poegi kehal olevas taskus?", o: ["Känguru", "Rebane", "Ilves", "Karu"], c: 0, f: "Kängurupoeg elab taskus mitu kuud pärast sündi.", cat: "Loomad ja loodus", dif: "keskmine" },
+  { q: "Milline metsloom on Eesti suurim kiskja?", o: ["Pruunkaru", "Ilves", "Hunt", "Rebane"], c: 0, f: "Pruunkaru võib kaaluda üle 200 kilogrammi.", cat: "Loomad ja loodus", dif: "keskmine" },
+  { q: "Milline on ainus imetajate liik, kes suudab tõeliselt lennata?", o: ["Nahkhiir", "Lendorav", "Lendkala", "Lendkonn"], c: 0, f: "Teised \"lendavad\" loomad tegelikult liuglevad.", cat: "Loomad ja loodus", dif: "raske" },
+  { q: "Milline loom on tuntud kui \"elav fossiil\" oma muutumatu kehaehituse poolest sadu miljoneid aastaid?", o: ["Hoburaudkrabi", "Krokodill", "Kilpkonn", "Hai"], c: 0, f: "Hoburaudkrabid on eksisteerinud juba enne dinosauruste teket.", cat: "Loomad ja loodus", dif: "raske" },
+  { q: "Mitu südant on kaheksajalal?", o: ["3", "1", "2", "4"], c: 0, f: "Kaks südant pumpavad verd lõpustesse, kolmas ülejäänud kehasse.", cat: "Loomad ja loodus", dif: "raske" },
+  { q: "Milline puu on Eesti rahvuspuu?", o: ["Tamm", "Kask", "Mänd", "Kuusk"], c: 0, f: "Tamm valiti rahvuspuuks aastal 1989.", cat: "Loomad ja loodus", dif: "raske" },
+  { q: "Millisel maomürgil (LD50 järgi) peetakse maailma kõige toksilisemaks?", o: ["Sisemaa taipan", "Kobra", "Mamba", "Rästik"], c: 0, f: "Sisemaa taipan elab Austraalia kõrbealadel ja väldib inimasustust.", cat: "Loomad ja loodus", dif: "raske" },
+];

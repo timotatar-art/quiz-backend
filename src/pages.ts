@@ -228,10 +228,22 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
             </select>
           </label>
           <label>Küsimuste arv
-            <input id="count" type="number" min="3" max="20" value="\${s.count}">
+            <select id="count">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+            </select>
           </label>
           <label>Vastamisaeg (sek)
-            <input id="answerSeconds" type="number" min="5" max="60" value="\${s.answerSeconds}">
+            <select id="answerSeconds">
+              <option value="8">8</option>
+              <option value="10">10</option>
+              <option value="12">12</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+            </select>
           </label>
           <label>Küsimuste allikas
             <select id="questionSource">
@@ -246,7 +258,9 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       document.getElementById('difficulty').onchange = sendSettings;
       document.getElementById('category').value = s.category;
       document.getElementById('category').onchange = sendSettings;
+      document.getElementById('count').value = s.count;
       document.getElementById('count').onchange = sendSettings;
+      document.getElementById('answerSeconds').value = s.answerSeconds;
       document.getElementById('answerSeconds').onchange = sendSettings;
       document.getElementById('questionSource').value = s.questionSource;
       document.getElementById('questionSource').onchange = sendSettings;

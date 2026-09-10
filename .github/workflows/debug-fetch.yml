@@ -1,0 +1,15 @@
+name: Debug Fetch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call debug endpoint
+        run: |
+          curl -sS "https://quiz-backend.timo-tatar.workers.dev/debug/test-ai" | tee result.json
+          echo "---"
+          echo "HTTP status:"
+          curl -sS -o /dev/null -w "%{http_code}\n" "https://quiz-backend.timo-tatar.workers.dev/debug/test-ai"

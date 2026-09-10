@@ -52,6 +52,29 @@ export default {
       }
     }
 
+    // AJUTINE DIAGNOSTIKA: testib otse AI genereerimist ja tagastab tegeliku veateate.
+    // Eemaldatakse pärast probleemi tuvastamist.
+    if (url.pathname === "/debug/test-ai") {
+      const { generateQuestions } = await import("./questions");
+      try {
+        const result = await generateQuestions(env.ANTHROPIC_API_KEY, {
+          difficulty: "keskmine",
+          category: "Aasia pealinnad",
+          count: 2,
+          answerSeconds: 12,
+          questionSource: "custom",
+          customTopic: "Aasia pealinnad",
+        });
+        return Response.json({ ok: true, count: result.length, sample: result[0] ?? null });
+      } catch (err) {
+        return Response.json({
+          ok: false,
+          errorName: err instanceof Error ? err.name : typeof err,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     // Uue TV-seansi loomine: genereeri ruumikood, algata Durable Object, kuva TV leht.
     if (url.pathname === "/tv") {
       const roomCode = generateRoomCode();

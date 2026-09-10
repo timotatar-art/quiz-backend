@@ -52,10 +52,10 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     #app { width: 100%; max-width: 960px; text-align: center; }
     .roomcode { font-size: 18px; color: var(--text-muted); }
     .roomcode b { color: var(--amber); font-size: 28px; letter-spacing: 4px; }
-    .lobby-grid { display: flex; align-items: center; justify-content: center; gap: 36px; text-align: left; margin: 16px 0; }
+    .lobby-card { display: inline-flex; align-items: center; gap: 28px; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; padding: 28px 36px; text-align: left; margin: 16px auto; }
     .lobby-left { flex: none; }
-    .lobby-right { flex: 1 1 auto; max-width: 380px; }
-    .qr { border-radius: 14px; overflow: hidden; width: 190px; box-shadow: 0 12px 40px rgba(240,165,39,0.15); }
+    .lobby-right { flex: none; width: 260px; }
+    .qr { border-radius: 12px; overflow: hidden; width: 170px; box-shadow: 0 8px 30px rgba(240,165,39,0.15); }
     .qr img { display: block; width: 100%; }
     .players { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
     .chip { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
@@ -274,7 +274,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     function renderLobby() {
       const s = currentState.settings;
       content.innerHTML = \`
-        <div class="lobby-grid">
+        <div class="lobby-card">
           <div class="lobby-left">
             <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
             <div class="qr" style="margin-top:10px;"><img src="\${qrUrl}" alt="QR"></div>

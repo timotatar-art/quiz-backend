@@ -118,25 +118,35 @@ export async function addToLibrary(env: Env, settings: Settings, questions: Ques
 // Varu-küsimuste valik: kõigepealt kasvavast AI-raamatukogust, seejärel
 // vajadusel täiendatakse staatilise algpangaga. Kasutatakse, kui AI
 // genereerimine ebaõnnestub (nt tokenid otsas) või kui host valib
-// küsimuste allikaks panga.
-export async function drawFromBank(env: Env, settings: Settings): Promise<Question[]> {
+// küsimuste allikaks panga. `excludeQuestions` väldib kordumist sama
+// ruumi (TV-seansi) varasemate mängudega.
+export async function drawFromBank(
+  env: Env,
+  settings: Settings,
+  excludeQuestions: string[] = []
+): Promise<Question[]> {
+  const excludeSet = new Set(excludeQuestions);
+
   let libraryQuestions: Question[] = [];
   try {
     const data = await callLibrary(env, "/draw", {
       category: settings.category,
       difficulty: settings.difficulty,
       count: settings.count,
+      exclude: excludeQuestions,
     });
     libraryQuestions = Array.isArray(data?.questions) ? data.questions : [];
   } catch {
     // Raamatukogu pole kättesaadav - kasuta ainult staatilist panka.
   }
+  // Turvavõrk juhuks, kui raamatukogu ei arvestanud exclude'iga.
+  libraryQuestions = libraryQuestions.filter((q) => !excludeSet.has(q.question));
 
   if (libraryQuestions.length >= settings.count) {
     return libraryQuestions.slice(0, settings.count).map(shuffleOptions);
   }
 
-  const already = new Set(libraryQuestions.map((q) => q.question));
+  const already = new Set([...excludeSet, ...libraryQuestions.map((q) => q.question)]);
   const staticPicks = drawFromStaticBank(settings, settings.count - libraryQuestions.length, already);
   return [...libraryQuestions, ...staticPicks].map(shuffleOptions);
 }

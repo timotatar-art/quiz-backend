@@ -49,10 +49,19 @@ export class QuestionLibrary {
     }
 
     if (request.method === "POST" && url.pathname === "/draw") {
-      const body = (await request.json()) as { category: string; difficulty: Settings["difficulty"]; count: number };
+      const body = (await request.json()) as {
+        category: string;
+        difficulty: Settings["difficulty"];
+        count: number;
+        exclude?: string[];
+      };
+      const excludeSet = new Set(body.exclude ?? []);
       const wantCategory = body.category === "Segamini" ? null : body.category;
       const pool = this.questions.filter(
-        (q) => q.difficulty === body.difficulty && (wantCategory === null || q.category === wantCategory)
+        (q) =>
+          q.difficulty === body.difficulty &&
+          (wantCategory === null || q.category === wantCategory) &&
+          !excludeSet.has(q.question)
       );
       const shuffled = [...pool];
       for (let i = shuffled.length - 1; i > 0; i--) {

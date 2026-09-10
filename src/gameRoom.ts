@@ -81,7 +81,16 @@ export class GameRoom {
         player.connected = true;
         player.name = name;
       } else {
-        player = { id: randomId(10), token: playerToken, name, score: 0, connected: true };
+        player = {
+          id: randomId(10),
+          token: playerToken,
+          name,
+          score: 0,
+          connected: true,
+          correctCount: 0,
+          answeredCount: 0,
+          correctTotalMs: 0,
+        };
         this.state.players.push(player);
       }
       server.serializeAttachment({ role: "player", playerId: player.id, name: player.name } satisfies WsAttachment);
@@ -264,7 +273,13 @@ export class GameRoom {
         this.state.currentIndex = -1;
         this.state.answers = {};
         this.state.questionEndsAt = null;
-        this.state.players = this.state.players.map((p) => ({ ...p, score: 0 }));
+        this.state.players = this.state.players.map((p) => ({
+          ...p,
+          score: 0,
+          correctCount: 0,
+          answeredCount: 0,
+          correctTotalMs: 0,
+        }));
         await this.persist();
         this.broadcastState();
         break;
@@ -280,7 +295,7 @@ export class GameRoom {
       this.state.phase = "ended";
       this.state.questionEndsAt = null;
       await this.persist();
-      this.broadcast({ type: "game_over", scoreboard: this.scoreboard() });
+      this.broadcast({ type: "game_over", scoreboard: this.finalStats() });
       return;
     }
 
@@ -309,10 +324,14 @@ export class GameRoom {
     const windowStart = (this.state.questionEndsAt ?? Date.now()) - totalMs;
     for (const player of this.state.players) {
       const answer = this.state.answers[player.id];
-      if (answer && answer.choiceIndex === q.correctIndex) {
+      if (!answer) continue;
+      player.answeredCount += 1;
+      if (answer.choiceIndex === q.correctIndex) {
         const elapsed = Math.max(0, answer.answeredAt - windowStart);
         const speedBonus = Math.max(0, Math.round(500 * (1 - elapsed / totalMs)));
         player.score += 500 + speedBonus;
+        player.correctCount += 1;
+        player.correctTotalMs += elapsed;
       }
     }
 
@@ -334,6 +353,21 @@ export class GameRoom {
     return [...this.state.players]
       .sort((a, b) => b.score - a.score)
       .map((p) => ({ name: p.name, score: p.score }));
+  }
+
+  // Detailsem lõpp-statistika, mida näidatakse ainult "Mäng läbi" ekraanil:
+  // õigete vastuste osakaal ja keskmine vastamiskiirus (ainult õigete vastuste seas).
+  private finalStats() {
+    const totalQuestions = this.state.questions.length;
+    return [...this.state.players]
+      .sort((a, b) => b.score - a.score)
+      .map((p) => ({
+        name: p.name,
+        score: p.score,
+        correctCount: p.correctCount,
+        totalQuestions,
+        avgCorrectMs: p.correctCount > 0 ? Math.round(p.correctTotalMs / p.correctCount) : null,
+      }));
   }
 
   async alarm() {

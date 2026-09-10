@@ -4,6 +4,9 @@ export interface Player {
   name: string;
   score: number;
   connected: boolean;
+  correctCount: number;
+  answeredCount: number;
+  correctTotalMs: number;
 }
 
 export interface Question {

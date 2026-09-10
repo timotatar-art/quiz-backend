@@ -72,8 +72,11 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     .opt-c { background: var(--amber); color: #241a05; }
     .opt-d { background: var(--green); color: #052912; }
     .timer { font-size: 60px; color: var(--amber); font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
-    .scoreboard { list-style: none; padding: 0; max-width: 400px; margin: 24px auto; text-align: left; }
+    .scoreboard { list-style: none; padding: 0; max-width: 460px; margin: 24px auto; text-align: left; }
     .scoreboard li { display: flex; justify-content: space-between; padding: 10px 16px; background: var(--bg-raised); border-radius: 10px; margin-bottom: 8px; }
+    .scoreboard li.detailed { display: block; }
+    .stat-top { display: flex; justify-content: space-between; font-size: 16px; }
+    .stat-line { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
     .funfact { color: var(--text-muted); margin-top: 16px; font-size: 16px; }
   `;
 
@@ -352,9 +355,34 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       clearInterval(timerInterval);
       stopBackgroundMusic();
       playReveal();
+      const stats = msg.scoreboard;
+      const withSpeed = stats.filter(p => p.avgCorrectMs !== null);
+      const fastest = withSpeed.length
+        ? withSpeed.reduce((a, b) => (b.avgCorrectMs < a.avgCorrectMs ? b : a))
+        : null;
+      const mostAccurate = stats.length
+        ? stats.reduce((a, b) => {
+            const aPct = a.totalQuestions > 0 ? a.correctCount / a.totalQuestions : 0;
+            const bPct = b.totalQuestions > 0 ? b.correctCount / b.totalQuestions : 0;
+            return bPct > aPct ? b : a;
+          })
+        : null;
+      const mostAccurateFinal = mostAccurate && mostAccurate.correctCount > 0 ? mostAccurate : null;
       content.innerHTML = \`
         <h2>🏆 Mäng läbi!</h2>
-        <ol class="scoreboard">\${msg.scoreboard.map(p => '<li><span>' + p.name + '</span><span>' + p.score + '</span></li>').join('')}</ol>
+        <ol class="scoreboard">\${stats.map(p => {
+          const pct = p.totalQuestions > 0 ? Math.round((p.correctCount / p.totalQuestions) * 100) : 0;
+          const speed = p.avgCorrectMs !== null ? (p.avgCorrectMs / 1000).toFixed(1) + 's' : '–';
+          const badges = [
+            fastest && p.name === fastest.name ? '⚡' : '',
+            mostAccurateFinal && p.name === mostAccurateFinal.name ? '🎯' : '',
+          ].filter(Boolean).join(' ');
+          return '<li class="detailed">' +
+            '<div class="stat-top"><span>' + p.name + (badges ? ' ' + badges : '') + '</span><span>' + p.score + '</span></div>' +
+            '<div class="stat-line">' + p.correctCount + '/' + p.totalQuestions + ' õiget (' + pct + '%) · keskm. ' + speed + '</div>' +
+          '</li>';
+        }).join('')}</ol>
+        <p style="color:var(--text-muted); font-size:13px; margin:10px 0 0;">⚡ kiireim sõrm · 🎯 kõige täpsem</p>
         <button id="restartBtn">🔁 Mängi uuesti</button>
       \`;
       document.getElementById('restartBtn').onclick = () => ws.send(JSON.stringify({ type: 'restart' }));

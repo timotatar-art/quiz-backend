@@ -46,6 +46,8 @@ function shell(title: string, body: string, extraStyle = ""): string {
 export function renderTvPage(roomCode: string, hostToken: string, origin: string): string {
   const playUrl = `${origin}/play/${roomCode}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=10&data=${encodeURIComponent(playUrl)}`;
+  const topicUrl = `${origin}/topic/${roomCode}`;
+  const topicQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(topicUrl)}`;
 
   const style = `
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
@@ -90,6 +92,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     const hostToken = ${JSON.stringify(hostToken)};
     const playUrl = ${JSON.stringify(playUrl)};
     const qrUrl = ${JSON.stringify(qrUrl)};
+    const topicQrUrl = ${JSON.stringify(topicQrUrl)};
     const content = document.getElementById('content');
     let currentState = null;
     let timerInterval = null;
@@ -212,6 +215,17 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
 
     function renderMenu() {
       const s = currentState.settings;
+      const customSection = s.questionSource === 'custom' ? \`
+        <div class="lobby-card" style="margin: 20px auto;">
+          <div class="lobby-left">
+            <div class="roomcode">Skaneeri ja kirjuta oma teema:</div>
+            <div class="qr" style="margin-top:10px; width:150px;"><img src="\${topicQrUrl}" alt="QR"></div>
+          </div>
+          <div class="lobby-right">
+            <p class="lobby-summary">Praegune teema:<br><b style="color:var(--amber)">\${s.customTopic ? s.customTopic : 'Pole veel valitud'}</b></p>
+          </div>
+        </div>
+      \` : '';
       content.innerHTML = \`
         <h2 style="margin-bottom:24px;">⚙️ Mängu seaded</h2>
         <div class="settings">
@@ -256,9 +270,11 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
             <select id="questionSource">
               <option value="ai">AI genereerib elavalt</option>
               <option value="bank">Valmis küsimuste pank</option>
+              <option value="custom">Kasutaja valik (oma teema)</option>
             </select>
           </label>
         </div>
+        \${customSection}
         <button id="lobbyBtn" style="font-size:18px; padding:16px 40px; margin-top:16px;">Edasi ootesaali →</button>
       \`;
       document.getElementById('difficulty').value = s.difficulty;
@@ -284,7 +300,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
           </div>
           <div class="lobby-right">
             <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">👤 ' + p.name + '</span>').join('')}</div>
-            <p class="lobby-summary">\${s.difficulty} · \${s.category} · \${s.count} küsimust · \${s.answerSeconds}s vastamiseks · \${s.questionSource === 'bank' ? 'küsimuste pank' : 'AI genereerib'}</p>
+            <p class="lobby-summary">\${s.difficulty} · \${s.questionSource === 'custom' ? (s.customTopic || 'oma teema') : s.category} · \${s.count} küsimust · \${s.answerSeconds}s vastamiseks · \${s.questionSource === 'bank' ? 'küsimuste pank' : s.questionSource === 'custom' ? 'kasutaja valik' : 'AI genereerib'}</p>
             <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>🚀 Alusta mängu</button>
           </div>
         </div>
@@ -501,6 +517,59 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
   `;
 
   return shell("Liitu kviisiga", body, style);
+}
+
+export function renderTopicPage(roomCode: string, origin: string): string {
+  const style = `
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    #app { width: 100%; max-width: 420px; text-align: center; }
+    textarea {
+      width: 100%; font-size: 17px; padding: 14px; margin-bottom: 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-raised); color: var(--text);
+      font-family: inherit; resize: vertical; min-height: 90px;
+    }
+    #submitBtn { width: 100%; font-size: 18px; padding: 14px; }
+    .status { color: var(--text-muted); font-size: 15px; margin-top: 14px; }
+    .hint { color: var(--text-muted); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  `;
+
+  const body = `
+  <div id="app">
+    <p style="color:var(--amber); display:flex; align-items:center; justify-content:center; gap:8px;"><img src="/logo.png" alt="" style="height:28px; width:28px; border-radius:6px;">LuVu game · ${roomCode}</p>
+    <h2 style="margin: 16px 0 8px;">Vali teema</h2>
+    <p class="hint">Kirjuta, millest küsimusi soovid — nt "Euroopa ajalugu keskajast tänapaevani" või "automargid". AI genereerib selle põhjal küsimused suurele ekraanile.</p>
+    <div id="content">
+      <textarea id="topicInput" placeholder="Sinu teema..." maxlength="150"></textarea>
+      <button id="submitBtn">Salvesta teema</button>
+      <p class="status" id="status"></p>
+    </div>
+  </div>
+  <script>
+    const roomCode = ${JSON.stringify(roomCode)};
+    document.getElementById('submitBtn').onclick = async () => {
+      const topic = document.getElementById('topicInput').value.trim();
+      const statusEl = document.getElementById('status');
+      if (!topic) {
+        statusEl.textContent = 'Kirjuta enne midagi.';
+        return;
+      }
+      statusEl.textContent = 'Salvestan...';
+      try {
+        const res = await fetch('/api/topic/' + roomCode, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ topic }),
+        });
+        if (!res.ok) throw new Error('fail');
+        statusEl.textContent = '✅ Salvestatud! Vaata suurt ekraani.';
+      } catch (e) {
+        statusEl.textContent = 'Midagi läks valesti, proovi uuesti.';
+      }
+    };
+  </script>
+  `;
+
+  return shell("Vali teema — LuVu game", body, style);
 }
 
 export function renderHomePage(): string {

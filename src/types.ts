@@ -23,7 +23,8 @@ export interface Settings {
   category: string;
   count: number;
   answerSeconds: number;
-  questionSource: "ai" | "bank";
+  questionSource: "ai" | "bank" | "custom";
+  customTopic: string;
 }
 
 export interface Answer {

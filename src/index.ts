@@ -1,7 +1,7 @@
 import type { Env } from "./types";
 import { GameRoom } from "./gameRoom";
 import { QuestionLibrary } from "./questionLibrary";
-import { renderTvPage, renderPlayerPage, renderHomePage } from "./pages";
+import { renderTvPage, renderPlayerPage, renderTopicPage, renderHomePage } from "./pages";
 import { LOGO_PNG_BASE64 } from "./logo";
 
 export { GameRoom, QuestionLibrary };
@@ -71,6 +71,31 @@ export default {
       return new Response(renderPlayerPage(roomCode, url.origin), {
         headers: { "content-type": "text/html; charset=utf-8" },
       });
+    }
+
+    // Kasutaja oma teema valimise leht (telefonis, QR kaudu menüüst): /topic/ABCD
+    const topicMatch = url.pathname.match(/^\/topic\/([A-Z0-9]{3,8})$/i);
+    if (topicMatch) {
+      const roomCode = topicMatch[1].toUpperCase();
+      return new Response(renderTopicPage(roomCode, url.origin), {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
+
+    // Salvestab telefonis sisestatud teema vastavasse mänguruumi ja teavitab TV-d.
+    const apiTopicMatch = url.pathname.match(/^\/api\/topic\/([A-Z0-9]{3,8})$/i);
+    if (apiTopicMatch && request.method === "POST") {
+      const roomCode = apiTopicMatch[1].toUpperCase();
+      const id = env.GAME_ROOM.idFromName(roomCode);
+      const stub = env.GAME_ROOM.get(id);
+      const bodyText = await request.text();
+      return stub.fetch(
+        new Request("https://internal/internal/set-topic", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: bodyText,
+        })
+      );
     }
 
     // WebSocket ühendused (nii TV kui mängijad) suunatakse õigesse Durable Objecti.

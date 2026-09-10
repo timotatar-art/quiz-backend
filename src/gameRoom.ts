@@ -18,7 +18,14 @@ export class GameRoom {
     this.env = env;
     this.state = {
       phase: "menu",
-      settings: { difficulty: "keskmine", category: "Segamini", count: 10, answerSeconds: 12, questionSource: "ai" },
+      settings: {
+        difficulty: "keskmine",
+        category: "Segamini",
+        count: 10,
+        answerSeconds: 12,
+        questionSource: "ai",
+        customTopic: "",
+      },
       players: [],
       questions: [],
       currentIndex: -1,
@@ -47,6 +54,18 @@ export class GameRoom {
       this.state.createdAt = Date.now();
       await this.persist();
       return Response.json({ hostToken: this.state.hostToken });
+    }
+
+    if (url.pathname === "/internal/set-topic" && request.method === "POST") {
+      const body = (await request.json()) as { topic?: string };
+      const topic = (body.topic ?? "").toString().trim().slice(0, 150);
+      if (topic) {
+        this.state.settings.customTopic = topic;
+        this.state.settings.questionSource = "custom";
+        await this.persist();
+        this.broadcastState();
+      }
+      return Response.json({ ok: Boolean(topic), topic });
     }
 
     if (request.headers.get("Upgrade") === "websocket") {
@@ -183,7 +202,9 @@ export class GameRoom {
           category: (data.category ?? this.state.settings.category).slice(0, 40),
           count: Math.min(20, Math.max(3, Number(data.count) || this.state.settings.count)),
           answerSeconds: Math.min(60, Math.max(5, Number(data.answerSeconds) || this.state.settings.answerSeconds)),
-          questionSource: data.questionSource === "bank" ? "bank" : "ai",
+          questionSource:
+            data.questionSource === "bank" ? "bank" : data.questionSource === "custom" ? "custom" : "ai",
+          customTopic: this.state.settings.customTopic,
         };
         await this.persist();
         this.broadcastState();
@@ -207,6 +228,13 @@ export class GameRoom {
           return;
         }
 
+        // "custom" režiimis kasutatakse kasutaja telefonis sisestatud teemat
+        // kategooriana - AI genereerib selle põhjal, mitte fikseeritud rippmenüü järgi.
+        const effectiveSettings =
+          this.state.settings.questionSource === "custom" && this.state.settings.customTopic.trim()
+            ? { ...this.state.settings, category: this.state.settings.customTopic.trim() }
+            : this.state.settings;
+
         if (this.state.settings.questionSource === "bank") {
           this.state.questions = await drawFromBank(this.env, this.state.settings, this.state.askedQuestions);
         } else {
@@ -214,11 +242,11 @@ export class GameRoom {
           try {
             this.state.questions = await generateQuestions(
               this.env.ANTHROPIC_API_KEY,
-              this.state.settings,
+              effectiveSettings,
               this.state.askedQuestions.slice(-40)
             );
             // Täienda kasvavat küsimuste raamatukogu, et neid saaks tulevikus taaskasutada.
-            this.ctx.waitUntil(addToLibrary(this.env, this.state.settings, this.state.questions));
+            this.ctx.waitUntil(addToLibrary(this.env, effectiveSettings, this.state.questions));
           } catch (err) {
             // AI genereerimine ebaõnnestus (nt tokenid otsas) - kasuta varupanka.
             this.state.questions = await drawFromBank(this.env, this.state.settings, this.state.askedQuestions);

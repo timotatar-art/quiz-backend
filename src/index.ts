@@ -28,6 +28,30 @@ export default {
       });
     }
 
+    // Rakendus küsib siit, kas on olemas uuem versioon kui hetkel paigaldatud.
+    // Ehitusnumber (tag "build-N") vastab otse Android versionCode'ile.
+    if (url.pathname === "/app-version") {
+      try {
+        const ghRes = await fetch("https://api.github.com/repos/timotatar-art/tvkviis/releases/latest", {
+          headers: { "user-agent": "luvu-game-version-check", accept: "application/vnd.github+json" },
+        });
+        if (!ghRes.ok) throw new Error(`GitHub API ${ghRes.status}`);
+        const release = (await ghRes.json()) as {
+          tag_name?: string;
+          assets?: { name: string; browser_download_url: string }[];
+        };
+        const match = /^build-(\d+)$/.exec(release.tag_name ?? "");
+        const versionCode = match ? parseInt(match[1], 10) : 0;
+        const asset = (release.assets ?? []).find((a) => a.name === "app-debug.apk");
+        return Response.json(
+          { versionCode, url: asset?.browser_download_url ?? null },
+          { headers: { "cache-control": "public, max-age=300" } }
+        );
+      } catch {
+        return Response.json({ versionCode: 0, url: null }, { status: 502 });
+      }
+    }
+
     // Uue TV-seansi loomine: genereeri ruumikood, algata Durable Object, kuva TV leht.
     if (url.pathname === "/tv") {
       const roomCode = generateRoomCode();

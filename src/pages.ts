@@ -48,17 +48,21 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=10&data=${encodeURIComponent(playUrl)}`;
 
   const style = `
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; }
-    #app { width: 100%; max-width: 900px; text-align: center; }
-    .roomcode { font-size: 20px; color: var(--text-muted); }
-    .roomcode b { color: var(--amber); font-size: 32px; letter-spacing: 4px; }
-    .qr { margin: 24px auto; border-radius: 16px; overflow: hidden; width: 240px; box-shadow: 0 12px 40px rgba(240,165,39,0.15); }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    #app { width: 100%; max-width: 960px; text-align: center; }
+    .roomcode { font-size: 18px; color: var(--text-muted); }
+    .roomcode b { color: var(--amber); font-size: 28px; letter-spacing: 4px; }
+    .lobby-grid { display: flex; align-items: center; justify-content: center; gap: 36px; text-align: left; margin: 16px 0; }
+    .lobby-left { flex: none; }
+    .lobby-right { flex: 1 1 auto; max-width: 380px; }
+    .qr { border-radius: 14px; overflow: hidden; width: 190px; box-shadow: 0 12px 40px rgba(240,165,39,0.15); }
     .qr img { display: block; width: 100%; }
-    .players { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 24px 0; }
-    .chip { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; font-size: 15px; }
+    .players { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .chip { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+    .lobby-summary { color: var(--text-muted); margin: 0 0 16px; font-size: 15px; line-height: 1.5; }
     .settings { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 24px 0; }
     .settings label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
-    #startBtn { font-size: 18px; padding: 16px 40px; margin-top: 16px; }
+    #startBtn { font-size: 18px; padding: 16px 40px; width: 100%; }
     .question h2 { font-size: 40px; margin-bottom: 24px; }
     .options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .opt { border: none; border-radius: 14px; padding: 24px; font-size: 22px; color: #fff; text-align: left; font-weight: 600; position: relative; opacity: 0.55; transition: opacity 0.2s ease; }
@@ -270,11 +274,17 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     function renderLobby() {
       const s = currentState.settings;
       content.innerHTML = \`
-        <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
-        <div class="qr"><img src="\${qrUrl}" alt="QR"></div>
-        <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">👤 ' + p.name + '</span>').join('')}</div>
-        <p style="color:var(--text-muted); margin: 12px 0 20px;">\${s.difficulty} · \${s.category} · \${s.count} küsimust · \${s.answerSeconds}s vastamiseks · \${s.questionSource === 'bank' ? 'küsimuste pank' : 'AI genereerib'}</p>
-        <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>🚀 Alusta mängu</button>
+        <div class="lobby-grid">
+          <div class="lobby-left">
+            <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
+            <div class="qr" style="margin-top:10px;"><img src="\${qrUrl}" alt="QR"></div>
+          </div>
+          <div class="lobby-right">
+            <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map(p => '<span class="chip">👤 ' + p.name + '</span>').join('')}</div>
+            <p class="lobby-summary">\${s.difficulty} · \${s.category} · \${s.count} küsimust · \${s.answerSeconds}s vastamiseks · \${s.questionSource === 'bank' ? 'küsimuste pank' : 'AI genereerib'}</p>
+            <button id="startBtn" \${currentState.players.length === 0 ? 'disabled' : ''}>🚀 Alusta mängu</button>
+          </div>
+        </div>
       \`;
       document.getElementById('startBtn').onclick = () => {
         initAudio();

@@ -561,7 +561,7 @@ export function renderTopicPage(roomCode: string, origin: string): string {
           body: JSON.stringify({ topic }),
         });
         if (!res.ok) throw new Error('fail');
-        statusEl.textContent = '✅ Salvestatud! Vaata suurt ekraani.';
+        statusEl.textContent = '✅ Teema salvestatud! Võid selle vahekaardi sulgeda — mäng algab suurel ekraanil, kui host vajutab "Alusta mängu".';
       } catch (e) {
         statusEl.textContent = 'Midagi läks valesti, proovi uuesti.';
       }

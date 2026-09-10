@@ -1,4 +1,4 @@
-import type { RoomState, Env, WsAttachment } from "./types";
+import type { RoomState, Env, WsAttachment, Question } from "./types";
 import { generateQuestions, drawFromBank, addToLibrary } from "./questions";
 
 function randomId(len = 8): string {
@@ -239,17 +239,36 @@ export class GameRoom {
           this.state.questions = await drawFromBank(this.env, this.state.settings, this.state.askedQuestions);
         } else {
           this.broadcast({ type: "generating_questions" });
-          try {
-            this.state.questions = await generateQuestions(
-              this.env.ANTHROPIC_API_KEY,
-              effectiveSettings,
-              this.state.askedQuestions.slice(-40)
-            );
+          let generated: Question[] | null = null;
+          // Proovi kaks korda, enne kui alla anda - üksik ajutine tõrge ei tohiks
+          // kohe varupanka viia, eriti kasutaja enda valitud teema puhul.
+          for (let attempt = 0; attempt < 2 && !generated; attempt++) {
+            try {
+              generated = await generateQuestions(
+                this.env.ANTHROPIC_API_KEY,
+                effectiveSettings,
+                this.state.askedQuestions.slice(-40)
+              );
+            } catch (err) {
+              generated = null;
+            }
+          }
+          if (generated) {
+            this.state.questions = generated;
             // Täienda kasvavat küsimuste raamatukogu, et neid saaks tulevikus taaskasutada.
             this.ctx.waitUntil(addToLibrary(this.env, effectiveSettings, this.state.questions));
-          } catch (err) {
-            // AI genereerimine ebaõnnestus (nt tokenid otsas) - kasuta varupanka.
-            this.state.questions = await drawFromBank(this.env, this.state.settings, this.state.askedQuestions);
+          } else {
+            // AI genereerimine ebaõnnestus kahel katsel - kasuta varupanka, aga
+            // kasutaja valitud teema puhul teavita hosti selgelt, et küsimused
+            // EI ole tema soovitud teemal (pank ei tea sellest teemast midagi).
+            if (this.state.settings.questionSource === "custom") {
+              this.broadcast({
+                type: "error",
+                message:
+                  "AI genereerimine ebaõnnestus - kuvatakse valmis panga küsimused, mitte sinu valitud teemal.",
+              });
+            }
+            this.state.questions = await drawFromBank(this.env, effectiveSettings, this.state.askedQuestions);
           }
         }
 

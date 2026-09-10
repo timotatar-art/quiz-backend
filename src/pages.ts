@@ -50,10 +50,10 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
   const style = `
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
     #app { width: 100%; max-width: 960px; text-align: center; }
-    .roomcode { font-size: 18px; color: var(--text-muted); }
+    .roomcode { font-size: 16px; color: var(--text-muted); overflow-wrap: break-word; }
     .roomcode b { color: var(--amber); font-size: 28px; letter-spacing: 4px; }
     .lobby-card { display: inline-flex; align-items: center; gap: 28px; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; padding: 28px 36px; text-align: left; margin: 16px auto; }
-    .lobby-left { flex: none; }
+    .lobby-left { flex: none; max-width: 280px; }
     .lobby-right { flex: none; width: 260px; }
     .qr { border-radius: 12px; overflow: hidden; width: 170px; box-shadow: 0 8px 30px rgba(240,165,39,0.15); }
     .qr img { display: block; width: 100%; }

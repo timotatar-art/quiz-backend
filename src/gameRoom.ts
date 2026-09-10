@@ -26,6 +26,7 @@ export class GameRoom {
       answers: {},
       hostToken: "",
       createdAt: Date.now(),
+      askedQuestions: [],
     };
     // Taasta seisund pärast hibernatsiooni (DO objekt luuakse iga ärkamise järel uuesti).
     this.ctx.blockConcurrencyWhile(async () => {
@@ -198,16 +199,20 @@ export class GameRoom {
         }
 
         if (this.state.settings.questionSource === "bank") {
-          this.state.questions = await drawFromBank(this.env, this.state.settings);
+          this.state.questions = await drawFromBank(this.env, this.state.settings, this.state.askedQuestions);
         } else {
           this.broadcast({ type: "generating_questions" });
           try {
-            this.state.questions = await generateQuestions(this.env.ANTHROPIC_API_KEY, this.state.settings);
+            this.state.questions = await generateQuestions(
+              this.env.ANTHROPIC_API_KEY,
+              this.state.settings,
+              this.state.askedQuestions.slice(-40)
+            );
             // Täienda kasvavat küsimuste raamatukogu, et neid saaks tulevikus taaskasutada.
             this.ctx.waitUntil(addToLibrary(this.env, this.state.settings, this.state.questions));
           } catch (err) {
             // AI genereerimine ebaõnnestus (nt tokenid otsas) - kasuta varupanka.
-            this.state.questions = await drawFromBank(this.env, this.state.settings);
+            this.state.questions = await drawFromBank(this.env, this.state.settings, this.state.askedQuestions);
           }
         }
 
@@ -215,6 +220,14 @@ export class GameRoom {
           this.broadcast({ type: "error", message: "Küsimusi ei õnnestunud hankida. Proovi uuesti." });
           return;
         }
+
+        // Jäta need küsimused meelde, et sama ruum (sama TV-seanss) ei kordaks
+        // neid enam ka järgmistel "Mängi uuesti" ringidel.
+        this.state.askedQuestions.push(...this.state.questions.map((q) => q.question));
+        if (this.state.askedQuestions.length > 300) {
+          this.state.askedQuestions = this.state.askedQuestions.slice(this.state.askedQuestions.length - 300);
+        }
+
         this.state.currentIndex = -1;
         await this.persist();
         await this.nextQuestion();

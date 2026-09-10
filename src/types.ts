@@ -38,6 +38,7 @@ export interface RoomState {
   answers: Record<string, Answer>;
   hostToken: string;
   createdAt: number;
+  askedQuestions: string[];
 }
 
 export interface Env {

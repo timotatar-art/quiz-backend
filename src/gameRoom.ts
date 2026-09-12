@@ -385,8 +385,8 @@ export class GameRoom {
     this.state.phase = "reveal";
     this.state.questionEndsAt = null;
     await this.persist();
-    // Automaatne edasiliikumine 3 sekundi pärast, ilma et host peaks nuppu vajutama.
-    await this.ctx.storage.setAlarm(Date.now() + 3000);
+    // Automaatne edasiliikumine 5 sekundi pärast, ilma et host peaks nuppu vajutama.
+    await this.ctx.storage.setAlarm(Date.now() + 5000);
 
     this.broadcast({
       type: "question_end",

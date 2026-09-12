@@ -17,6 +17,7 @@ Nõuded igale küsimusele:
 - meelelahutuslik, sobib laiale ja peresõbralikule publikule
 - 4 vastusevarianti, ainult üks õige, ülejäänud 3 usutavad, aga selgelt valed
 - vastuste pikkus sarnane (et õige vastus ei paistaks pikkuse järgi silma)
+- kirjuta loomulikus, ladusas eesti keeles - mitte otsetõlke moodi ingliskeelsest lausest. Väldi kohmakaid sõnasõnalisi konstruktsioone ja kasuta tavapäraseid eestikeelseid sõnastusi, nagu räägiks eesti keel emakeelena
 ${previousQuestions.length > 0 ? `- ei tohi kattuda nende varasemate küsimustega: ${previousQuestions.join("; ")}` : ""}
 
 Väljasta AINULT JSON massiivina, ilma lisatekstita, backtickideta ja seletusteta:

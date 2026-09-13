@@ -20,7 +20,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // LuVu game logo, kasutatakse TV ja mängija lehtedel.
+    // LuVu Quiz logo, kasutatakse TV ja mängija lehtedel.
     if (url.pathname === "/logo.png") {
       const bytes = Uint8Array.from(atob(LOGO_PNG_BASE64), (c) => c.charCodeAt(0));
       return new Response(bytes, {

@@ -80,6 +80,16 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     .stat-top { display: flex; justify-content: space-between; font-size: 16px; }
     .stat-line { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
     .funfact { color: var(--text-muted); margin-top: 16px; font-size: 16px; }
+    .gametype-options { display: flex; gap: 20px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+    .gametype-btn { font-size: 20px; padding: 28px 36px; min-width: 200px; }
+    .board { display: grid; grid-template-columns: repeat(8, 1fr); width: min(64vh, 460px); margin: 20px auto; border: 4px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .square { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+    .square.light { background: #ead9b4; }
+    .square.dark { background: #7a5230; }
+    .piece { width: 76%; height: 76%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .piece.white { background: radial-gradient(circle at 35% 30%, #fff, #c9c9c9); border: 2px solid #999; }
+    .piece.black { background: radial-gradient(circle at 35% 30%, #555, #0a0a0a); border: 2px solid #000; color: #fff; }
+    .turn-indicator { font-size: 18px; margin: 10px 0 0; color: var(--text-muted); }
   `;
 
   const body = `
@@ -195,6 +205,10 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
         else if (msg.type === 'question_start') renderQuestion(msg);
         else if (msg.type === 'question_end') renderReveal(msg);
         else if (msg.type === 'game_over') renderGameOver(msg);
+        else if (msg.type === 'checkers_state') {
+          if (currentState) currentState.checkers = msg.checkers;
+          if (currentState && (currentState.phase === 'checkers-playing' || currentState.phase === 'checkers-ended')) renderCheckersBoard();
+        }
         else if (msg.type === 'error') alert(msg.message);
       };
 
@@ -209,8 +223,84 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
 
     function renderForPhase() {
       if (!currentState) return;
-      if (currentState.phase === 'menu') renderMenu();
+      if (currentState.phase === 'gametype') renderGameType();
+      else if (currentState.phase === 'menu') renderMenu();
       else if (currentState.phase === 'lobby') renderLobby();
+      else if (currentState.phase === 'checkers-setup') renderCheckersSetup();
+      else if (currentState.phase === 'checkers-lobby') renderCheckersLobby();
+      else if (currentState.phase === 'checkers-playing' || currentState.phase === 'checkers-ended') renderCheckersBoard();
+    }
+
+    function renderGameType() {
+      content.innerHTML = \`
+        <h2 style="margin-bottom:12px;">Vali mäng</h2>
+        <div class="gametype-options">
+          <button class="gametype-btn" id="quizBtn">🧠 Mälumäng</button>
+          <button class="gametype-btn" id="checkersBtn">⚫ Kabe</button>
+        </div>
+      \`;
+      document.getElementById('quizBtn').onclick = () => ws.send(JSON.stringify({ type: 'select_gametype', gameType: 'quiz' }));
+      document.getElementById('checkersBtn').onclick = () => ws.send(JSON.stringify({ type: 'select_gametype', gameType: 'checkers' }));
+    }
+
+    function renderCheckersSetup() {
+      content.innerHTML = \`
+        <h2 style="margin-bottom:12px;">⚫ Kabe</h2>
+        <p style="color:var(--text-muted); margin-bottom:20px;">Vali, kuidas mängida.</p>
+        <div class="gametype-options">
+          <button class="gametype-btn" id="aiBtn">🤖 Üksi (AI vastu)</button>
+          <button class="gametype-btn" id="twoBtn">👥 Kaks mängijat</button>
+        </div>
+        <p style="margin-top:28px;"><a href="#" id="backLink" style="color:var(--text-muted); font-size:14px;">← Vali teine mäng</a></p>
+      \`;
+      document.getElementById('aiBtn').onclick = () => ws.send(JSON.stringify({ type: 'set_checkers_mode', mode: 'ai' }));
+      document.getElementById('twoBtn').onclick = () => ws.send(JSON.stringify({ type: 'set_checkers_mode', mode: 'two-player' }));
+      document.getElementById('backLink').onclick = (e) => { e.preventDefault(); ws.send(JSON.stringify({ type: 'back_to_gametype' })); };
+    }
+
+    function renderCheckersLobby() {
+      content.innerHTML = \`
+        <div class="lobby-card">
+          <div class="lobby-left">
+            <div class="roomcode">Liitu aadressil <b>\${location.host}</b><br>Ruumikood: <b>\${roomCode}</b></div>
+            <div class="qr" style="margin-top:10px;"><img src="\${qrUrl}" alt="QR"></div>
+          </div>
+          <div class="lobby-right">
+            <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map((p, i) => '<span class="chip">' + (i === 0 ? '⚪' : '⚫') + ' ' + p.name + '</span>').join('')}</div>
+            <p class="lobby-summary">Esimesena liitunu mängib valgetega, teine mustadega.</p>
+            <button id="startCheckersBtn" \${currentState.players.length < 2 ? 'disabled' : ''}>🚀 Alusta mängu</button>
+          </div>
+        </div>
+      \`;
+      document.getElementById('startCheckersBtn').onclick = () => ws.send(JSON.stringify({ type: 'start_checkers' }));
+    }
+
+    function renderBoardSquares(board) {
+      let html = '';
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const dark = (r + c) % 2 === 1;
+          const piece = board[r][c];
+          const pieceHtml = piece ? '<div class="piece ' + piece.color + '">' + (piece.king ? '♛' : '') + '</div>' : '';
+          html += '<div class="square ' + (dark ? 'dark' : 'light') + '">' + pieceHtml + '</div>';
+        }
+      }
+      return html;
+    }
+
+    function renderCheckersBoard() {
+      const cs = currentState.checkers;
+      if (!cs) return;
+      const winnerText = cs.winner === 'white' ? '⚪ Valge võitis!' : cs.winner === 'black' ? '⚫ Must võitis!' : '';
+      content.innerHTML = \`
+        <h2 style="margin-bottom:4px;">⚫ Kabe</h2>
+        <p class="turn-indicator">\${cs.winner ? winnerText : (cs.turn === 'white' ? '⚪ Valge käik' : '⚫ Musta käik')}</p>
+        <div class="board">\${renderBoardSquares(cs.board)}</div>
+        \${cs.winner ? '<button id="restartCheckersBtn" style="margin-top:16px;">🔁 Mängi uuesti</button>' : ''}
+      \`;
+      if (cs.winner) {
+        document.getElementById('restartCheckersBtn').onclick = () => ws.send(JSON.stringify({ type: 'restart_checkers' }));
+      }
     }
 
     function renderMenu() {
@@ -276,6 +366,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
         </div>
         \${customSection}
         <button id="lobbyBtn" style="font-size:18px; padding:16px 40px; margin-top:16px;">Edasi ootesaali →</button>
+        <p style="margin-top:20px;"><a href="#" id="backLink" style="color:var(--text-muted); font-size:14px;">← Vali teine mäng</a></p>
       \`;
       document.getElementById('difficulty').value = s.difficulty;
       document.getElementById('difficulty').onchange = sendSettings;
@@ -288,6 +379,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       document.getElementById('questionSource').value = s.questionSource;
       document.getElementById('questionSource').onchange = sendSettings;
       document.getElementById('lobbyBtn').onclick = () => ws.send(JSON.stringify({ type: 'enter_lobby' }));
+      document.getElementById('backLink').onclick = (e) => { e.preventDefault(); ws.send(JSON.stringify({ type: 'back_to_gametype' })); };
     }
 
     function renderLobby() {
@@ -424,6 +516,24 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     .opt-btn.correct { background: var(--green) !important; color: #052912 !important; box-shadow: 0 0 0 4px #fff inset; }
     .opt-btn.wrong { opacity: 0.35; }
     .status { color: var(--text-muted); font-size: 16px; }
+    .board-stage { perspective: 900px; margin: 20px auto; width: min(92vw, 380px); }
+    .board-stage.flipped .board3d { transform: rotateX(52deg) rotate(180deg); }
+    .board3d {
+      display: grid; grid-template-columns: repeat(8, 1fr); transform-style: preserve-3d;
+      transform: rotateX(52deg); border: 3px solid var(--border); border-radius: 8px; overflow: hidden;
+      box-shadow: 0 25px 40px rgba(0,0,0,0.5);
+    }
+    .csquare { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+    .csquare.light { background: #ead9b4; }
+    .csquare.dark { background: #7a5230; }
+    .csquare.selectable::after { content: ''; position: absolute; inset: 18%; border-radius: 50%; background: rgba(240,165,39,0.55); }
+    .csquare.selected { outline: 3px solid var(--amber); outline-offset: -3px; }
+    .cpiece { width: 76%; height: 76%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.5); }
+    .cpiece.white { background: radial-gradient(circle at 35% 30%, #fff, #c9c9c9); border: 2px solid #999; }
+    .cpiece.black { background: radial-gradient(circle at 35% 30%, #555, #0a0a0a); border: 2px solid #000; }
+    .cpiece.king { display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .cpiece.king.white { color: #8a6420; }
+    .cpiece.king.black { color: #f0a527; }
   `;
 
   const body = `
@@ -442,6 +552,9 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     let answered = false;
     let playerName = '';
     let reconnectAttempts = 0;
+    let myPlayerId = null;
+    let currentState = null;
+    let selectedSquare = null;
 
     const tokenKey = 'tvkviis_token_' + roomCode;
     let playerToken = localStorage.getItem(tokenKey);
@@ -466,9 +579,12 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
 
       ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data);
-        if (msg.type === 'question_start') renderQuestion(msg);
+        if (msg.type === 'you') { myPlayerId = msg.playerId; }
+        else if (msg.type === 'room_state') { currentState = msg.state; renderForGameState(); }
+        else if (msg.type === 'question_start') renderQuestion(msg);
         else if (msg.type === 'question_end') renderResult(msg);
         else if (msg.type === 'game_over') renderGameOver(msg);
+        else if (msg.type === 'checkers_state') renderCheckers(msg.checkers, msg.legalMoves);
         else if (msg.type === 'error') alert(msg.message);
       };
 
@@ -481,6 +597,17 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
           content.innerHTML = '<p class="status">Ühendus katkes. Värskenda lehte.</p>';
         }
       };
+    }
+
+    function renderForGameState() {
+      if (!currentState) return;
+      if (currentState.gameType === 'checkers') {
+        if (currentState.phase === 'checkers-lobby' || currentState.phase === 'checkers-setup') {
+          content.innerHTML = '<p class="status">⚫ Kabe — oota, kuni host alustab mängu...</p>';
+        } else if (currentState.checkers && (currentState.phase === 'checkers-playing' || currentState.phase === 'checkers-ended')) {
+          renderCheckers(currentState.checkers, null);
+        }
+      }
     }
 
     function renderQuestion(msg) {
@@ -512,6 +639,92 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
 
     function renderGameOver(msg) {
       content.innerHTML = '<h2>🏆 Mäng läbi!</h2><p class="status">Vaata lõpptulemust suurelt ekraanilt</p>';
+    }
+
+    // --- Kabe (3D vaade, puutega käigud) ---
+    let lastLegalMoves = [];
+
+    function myCheckersColor(cs) {
+      if (cs.mode === 'ai') return 'white';
+      return cs.playerColor[myPlayerId] || null;
+    }
+
+    function renderCheckers(cs, legalMoves) {
+      if (legalMoves) lastLegalMoves = legalMoves;
+      selectedSquare = null;
+      const myColor = myCheckersColor(cs);
+      const flipped = myColor === 'black';
+      const winnerText = cs.winner === 'white' ? '⚪ Valge võitis!' : cs.winner === 'black' ? '⚫ Must võitis!' : '';
+      const turnText = cs.winner ? winnerText : (cs.turn === myColor ? 'Sinu käik' : (cs.turn === 'white' ? 'Oota — valge käik' : 'Oota — musta käik'));
+      content.innerHTML = \`
+        <p class="status" style="margin-bottom:4px;">⚫ Kabe · sa mängid \${myColor === 'white' ? '⚪ valgetega' : myColor === 'black' ? '⚫ mustadega' : ''}</p>
+        <p class="status" style="font-weight:600; color:var(--text);">\${turnText}</p>
+        <div class="board-stage\${flipped ? ' flipped' : ''}"><div class="board3d" id="board3d"></div></div>
+        \${cs.winner ? '<p class="status">Vaata uut mängu suurelt ekraanilt.</p>' : ''}
+      \`;
+      drawBoard(cs);
+    }
+
+    function drawBoard(cs) {
+      const el = document.getElementById('board3d');
+      if (!el) return;
+      const myColor = myCheckersColor(cs);
+      let html = '';
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const dark = (r + c) % 2 === 1;
+          const piece = cs.board[r][c];
+          const isSelected = selectedSquare && selectedSquare[0] === r && selectedSquare[1] === c;
+          const isSelectable = !cs.winner && cs.turn === myColor && (
+            selectedSquare
+              ? lastLegalMoves.some(m => m.from[0] === selectedSquare[0] && m.from[1] === selectedSquare[1] && m.to[0] === r && m.to[1] === c)
+              : (piece && piece.color === myColor && lastLegalMoves.some(m => m.from[0] === r && m.from[1] === c))
+          );
+          html += '<div class="csquare ' + (dark ? 'dark' : 'light') + (isSelected ? ' selected' : '') + (isSelectable ? ' selectable' : '') + '" data-r="' + r + '" data-c="' + c + '"></div>';
+        }
+      }
+      el.innerHTML = html;
+      // Lisa nupud eraldi, et vältida innerHTML taasparsimist iga kord tyhjaks jätmata.
+      el.querySelectorAll('.csquare').forEach(sq => {
+        const r = Number(sq.dataset.r), c = Number(sq.dataset.c);
+        const piece = cs.board[r][c];
+        if (piece) {
+          const pieceEl = document.createElement('div');
+          pieceEl.className = 'cpiece ' + piece.color + (piece.king ? ' king' : '');
+          if (piece.king) pieceEl.textContent = '♛';
+          sq.appendChild(pieceEl);
+        }
+        sq.onclick = () => onSquareTap(cs, r, c);
+      });
+    }
+
+    function onSquareTap(cs, r, c) {
+      const myColor = myCheckersColor(cs);
+      if (cs.winner || cs.turn !== myColor) return;
+      const piece = cs.board[r][c];
+
+      if (selectedSquare) {
+        const legal = lastLegalMoves.find(m => m.from[0] === selectedSquare[0] && m.from[1] === selectedSquare[1] && m.to[0] === r && m.to[1] === c);
+        if (legal) {
+          ws.send(JSON.stringify({ type: 'checkers_move', from: selectedSquare, to: [r, c] }));
+          selectedSquare = null;
+          drawBoard(cs);
+          return;
+        }
+        if (piece && piece.color === myColor && lastLegalMoves.some(m => m.from[0] === r && m.from[1] === c)) {
+          selectedSquare = [r, c];
+          drawBoard(cs);
+          return;
+        }
+        selectedSquare = null;
+        drawBoard(cs);
+        return;
+      }
+
+      if (piece && piece.color === myColor && lastLegalMoves.some(m => m.from[0] === r && m.from[1] === c)) {
+        selectedSquare = [r, c];
+        drawBoard(cs);
+      }
     }
   </script>
   `;

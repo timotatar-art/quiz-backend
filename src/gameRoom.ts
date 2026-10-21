@@ -1,5 +1,6 @@
-import type { RoomState, Env, WsAttachment, Question } from "./types";
+import type { RoomState, Env, WsAttachment, Question, CheckersMove, CheckersColor } from "./types";
 import { generateQuestions, drawFromBank, addToLibrary } from "./questions";
+import { createInitialBoard, getLegalMoves, getCapturesForPiece, applyMove, checkWinner, chooseAiMove } from "./checkers";
 
 function randomId(len = 8): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -17,7 +18,8 @@ export class GameRoom {
     this.ctx = ctx;
     this.env = env;
     this.state = {
-      phase: "menu",
+      gameType: "quiz",
+      phase: "gametype",
       settings: {
         difficulty: "keskmine",
         category: "Segamini",
@@ -34,6 +36,7 @@ export class GameRoom {
       hostToken: "",
       createdAt: Date.now(),
       askedQuestions: [],
+      checkers: null,
     };
     // Taasta seisund pärast hibernatsiooni (DO objekt luuakse iga ärkamise järel uuesti).
     this.ctx.blockConcurrencyWhile(async () => {
@@ -113,6 +116,7 @@ export class GameRoom {
         this.state.players.push(player);
       }
       server.serializeAttachment({ role: "player", playerId: player.id, name: player.name } satisfies WsAttachment);
+      server.send(JSON.stringify({ type: "you", playerId: player.id }));
       this.ctx.waitUntil(this.persist());
     } else {
       server.close(4000, "Tundmatu roll");
@@ -153,6 +157,13 @@ export class GameRoom {
           })
         );
       }
+    } else if (
+      (this.state.phase === "checkers-playing" || this.state.phase === "checkers-ended") &&
+      this.state.checkers
+    ) {
+      const cs = this.state.checkers;
+      const legalMoves = !cs.winner ? getLegalMoves(cs.board, cs.turn, cs.mustContinueFrom) : [];
+      ws.send(JSON.stringify({ type: "checkers_state", checkers: cs, legalMoves }));
     }
   }
 
@@ -169,12 +180,14 @@ export class GameRoom {
 
   private publicState() {
     return {
+      gameType: this.state.gameType,
       phase: this.state.phase,
       settings: this.state.settings,
       players: this.state.players.map((p) => ({ id: p.id, name: p.name, score: p.score })),
       currentIndex: this.state.currentIndex,
       totalQuestions: this.state.questions.length,
       questionEndsAt: this.state.questionEndsAt,
+      checkers: this.state.checkers,
     };
   }
 
@@ -194,6 +207,104 @@ export class GameRoom {
     if (!attachment) return;
 
     switch (data.type) {
+      case "select_gametype": {
+        if (attachment.role !== "tv") return;
+        if (this.state.phase !== "gametype") return;
+        const type = data.gameType === "checkers" ? "checkers" : "quiz";
+        this.state.gameType = type;
+        this.state.phase = type === "checkers" ? "checkers-setup" : "menu";
+        await this.persist();
+        this.broadcastState();
+        break;
+      }
+
+      case "back_to_gametype": {
+        if (attachment.role !== "tv") return;
+        this.state.phase = "gametype";
+        this.state.checkers = null;
+        await this.persist();
+        this.broadcastState();
+        break;
+      }
+
+      case "set_checkers_mode": {
+        if (attachment.role !== "tv") return;
+        if (this.state.phase !== "checkers-setup") return;
+        const mode = data.mode === "two-player" ? "two-player" : "ai";
+        this.state.checkers = {
+          mode,
+          board: createInitialBoard(),
+          turn: "white",
+          playerColor: {},
+          winner: null,
+          lastMove: null,
+          mustContinueFrom: null,
+        };
+        this.state.phase = mode === "two-player" ? "checkers-lobby" : "checkers-playing";
+        await this.persist();
+        this.broadcastState();
+        if (mode === "ai") this.broadcastCheckersState();
+        break;
+      }
+
+      case "start_checkers": {
+        if (attachment.role !== "tv") return;
+        if (this.state.phase !== "checkers-lobby") return;
+        if (this.state.players.length < 2) {
+          this.broadcast({ type: "error", message: "Kabe kahe mängija vastu vajab kahte liitunud mängijat." });
+          return;
+        }
+        if (this.state.checkers) {
+          this.state.checkers.playerColor = {
+            [this.state.players[0].id]: "white",
+            [this.state.players[1].id]: "black",
+          };
+        }
+        this.state.phase = "checkers-playing";
+        await this.persist();
+        this.broadcastState();
+        this.broadcastCheckersState();
+        break;
+      }
+
+      case "checkers_move": {
+        if (attachment.role !== "player" || !attachment.playerId) return;
+        if (this.state.phase !== "checkers-playing" || !this.state.checkers) return;
+        const cs = this.state.checkers;
+        if (cs.winner) return;
+
+        let playerColor: CheckersColor | null =
+          cs.mode === "ai" ? "white" : (cs.playerColor[attachment.playerId] ?? null);
+        if (!playerColor || playerColor !== cs.turn) return;
+
+        const from: [number, number] = [Number(data.from?.[0]), Number(data.from?.[1])];
+        const to: [number, number] = [Number(data.to?.[0]), Number(data.to?.[1])];
+        const legalMoves = getLegalMoves(cs.board, cs.turn, cs.mustContinueFrom);
+        const match = legalMoves.find(
+          (m) => m.from[0] === from[0] && m.from[1] === from[1] && m.to[0] === to[0] && m.to[1] === to[1]
+        );
+        if (!match) return;
+
+        this.applyCheckersMove(match);
+        await this.persist();
+        this.broadcastCheckersState();
+
+        if (cs.mode === "ai" && !cs.winner && cs.turn === "black") {
+          await this.runAiTurn();
+        }
+        break;
+      }
+
+      case "restart_checkers": {
+        if (attachment.role !== "tv") return;
+        if (this.state.phase !== "checkers-ended") return;
+        this.state.phase = "checkers-setup";
+        this.state.checkers = null;
+        await this.persist();
+        this.broadcastState();
+        break;
+      }
+
       case "update_settings": {
         if (attachment.role !== "tv") return;
         if (this.state.phase !== "menu") return;
@@ -394,6 +505,62 @@ export class GameRoom {
       funFact: q.funFact ?? null,
       scoreboard: this.scoreboard(),
     });
+  }
+
+  // Rakendab ühe kabekäigu (sh löömise) hetkeseisule. Kui käik lõi vastase
+  // nupu ja sama nupp saab veel edasi lüüa, jääb käik sama mängija kätte
+  // (kohustusliku mitmiklöömise reegel) - vastasel juhul läheb käik edasi
+  // ja kontrollitakse, kas vastaspool on kaotanud.
+  private applyCheckersMove(move: CheckersMove) {
+    const cs = this.state.checkers;
+    if (!cs) return;
+    cs.board = applyMove(cs.board, move);
+    cs.lastMove = move;
+
+    if (move.captured) {
+      const further = getCapturesForPiece(cs.board, move.to[0], move.to[1]);
+      if (further.length > 0) {
+        cs.mustContinueFrom = move.to;
+        return;
+      }
+    }
+
+    cs.mustContinueFrom = null;
+    const nextTurn: CheckersColor = cs.turn === "white" ? "black" : "white";
+    const winner = checkWinner(cs.board, nextTurn);
+    if (winner) {
+      cs.winner = winner;
+      this.state.phase = "checkers-ended";
+    } else {
+      cs.turn = nextTurn;
+    }
+  }
+
+  // Lasepõe AI-l (must) käia, sh järjestikused kohustuslikud löömised ühe
+  // käigu raames, kuni on jälle valge kord või mäng lõppes.
+  private async runAiTurn() {
+    const cs = this.state.checkers;
+    if (!cs || cs.winner) return;
+    while (cs.turn === "black" && !cs.winner) {
+      const move = chooseAiMove(cs.board, "black", cs.mustContinueFrom);
+      if (!move) {
+        cs.winner = "white";
+        this.state.phase = "checkers-ended";
+        break;
+      }
+      this.applyCheckersMove(move);
+    }
+    await this.persist();
+    this.broadcastCheckersState();
+  }
+
+  private broadcastCheckersState() {
+    const cs = this.state.checkers;
+    const legalMoves = cs && !cs.winner ? getLegalMoves(cs.board, cs.turn, cs.mustContinueFrom) : [];
+    this.broadcast({ type: "checkers_state", checkers: cs, legalMoves });
+    // Saada ka room_state, et faasimuutus (nt "checkers-ended") jõuaks alati
+    // kabeseisuga koos kohale, mitte ei jääks kliendis lahku.
+    this.broadcastState();
   }
 
   private scoreboard() {

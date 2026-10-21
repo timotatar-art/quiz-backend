@@ -16,7 +16,45 @@ export interface Question {
   funFact?: string;
 }
 
-export type Phase = "menu" | "lobby" | "question" | "reveal" | "ended";
+export type Phase =
+  | "gametype"
+  | "menu"
+  | "lobby"
+  | "question"
+  | "reveal"
+  | "ended"
+  | "checkers-setup"
+  | "checkers-lobby"
+  | "checkers-playing"
+  | "checkers-ended";
+
+export type GameType = "quiz" | "checkers";
+
+export type CheckersMode = "ai" | "two-player";
+export type CheckersColor = "white" | "black";
+
+export interface CheckersPiece {
+  color: CheckersColor;
+  king: boolean;
+}
+
+export type CheckersBoard = (CheckersPiece | null)[][];
+
+export interface CheckersMove {
+  from: [number, number];
+  to: [number, number];
+  captured?: [number, number];
+}
+
+export interface CheckersState {
+  mode: CheckersMode;
+  board: CheckersBoard;
+  turn: CheckersColor;
+  playerColor: Record<string, CheckersColor>;
+  winner: CheckersColor | null;
+  lastMove: CheckersMove | null;
+  mustContinueFrom: [number, number] | null;
+}
 
 export interface Settings {
   difficulty: "lihtne" | "keskmine" | "raske";
@@ -33,6 +71,7 @@ export interface Answer {
 }
 
 export interface RoomState {
+  gameType: GameType;
   phase: Phase;
   settings: Settings;
   players: Player[];
@@ -43,6 +82,7 @@ export interface RoomState {
   hostToken: string;
   createdAt: number;
   askedQuestions: string[];
+  checkers: CheckersState | null;
 }
 
 export interface Env {

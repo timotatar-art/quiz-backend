@@ -64,6 +64,17 @@ export default {
       });
     }
 
+    // Telefon-telefon kabe: loo kahe mängija ooteruum otse, ilma TV-ta.
+    if (url.pathname === "/checkers") {
+      const roomCode = generateRoomCode();
+      const id = env.GAME_ROOM.idFromName(roomCode);
+      const stub = env.GAME_ROOM.get(id);
+      await stub.fetch(new Request("https://internal/internal/create-checkers-room", { method: "POST" }));
+      return new Response(renderPlayerPage(roomCode, url.origin), {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
+
     // Mängija liitumisleht: /play/ABCD
     const playMatch = url.pathname.match(/^\/play\/([A-Z0-9]{3,8})$/i);
     if (playMatch) {

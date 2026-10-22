@@ -87,9 +87,13 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     .square.light { background: #ead9b4; }
     .square.dark { background: #7a5230; }
     .square.last-move { box-shadow: inset 0 0 0 4px var(--amber); }
-    .piece { width: 78%; height: 78%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-size: 16px; box-sizing: border-box; }
-    .piece.white { background: #f5f3ee; border: 3px solid #2a2a2a; }
-    .piece.black { background: #1c1c1c; border: 3px solid #000; color: #f0a527; }
+    .piece { width: 78%; height: 78%; border-radius: 50%; position: relative; box-sizing: border-box; box-shadow: 0 3px 6px rgba(0,0,0,0.55), inset 0 2px 3px rgba(255,255,255,0.25), inset 0 -3px 5px rgba(0,0,0,0.35); }
+    .piece::before { content: ''; position: absolute; inset: 15%; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); }
+    .piece.white { background: radial-gradient(circle at 35% 28%, #ffffff 0%, #eae6da 55%, #cac2ab 100%); border: 3px solid #2a2a2a; }
+    .piece.black { background: radial-gradient(circle at 35% 28%, #4c4c4c 0%, #222 55%, #0a0a0a 100%); border: 3px solid #000; }
+    .piece.white::before { border-color: rgba(0,0,0,0.2); }
+    .piece.black::before { border-color: rgba(255,255,255,0.14); }
+    .piece.king::after { content: ''; position: absolute; inset: 32%; border-radius: 50%; background: var(--amber); box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.4); }
     .turn-indicator { font-size: 18px; margin: 10px 0 0; color: var(--text-muted); }
   `;
 
@@ -268,12 +272,10 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
           </div>
           <div class="lobby-right">
             <div class="players">\${currentState.players.length === 0 ? '<span style="color:var(--text-muted)">Ootan mängijaid...</span>' : currentState.players.map((p, i) => '<span class="chip">' + (i === 0 ? '⚪' : '⚫') + ' ' + p.name + '</span>').join('')}</div>
-            <p class="lobby-summary">Esimesena liitunu mängib valgetega, teine mustadega.</p>
-            <button id="startCheckersBtn" \${currentState.players.length < 2 ? 'disabled' : ''}>🚀 Alusta mängu</button>
+            <p class="lobby-summary">Esimesena liitunu mängib valgetega, teine mustadega. Mäng algab automaatselt, kui mõlemad on liitunud.</p>
           </div>
         </div>
       \`;
-      document.getElementById('startCheckersBtn').onclick = () => ws.send(JSON.stringify({ type: 'start_checkers' }));
     }
 
     function isLastMoveSquare(lastMove, r, c) {
@@ -287,7 +289,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
         for (let c = 0; c < 10; c++) {
           const dark = (r + c) % 2 === 1;
           const piece = board[r][c];
-          const pieceHtml = piece ? '<div class="piece ' + piece.color + '">' + (piece.king ? '♛' : '') + '</div>' : '';
+          const pieceHtml = piece ? '<div class="piece ' + piece.color + (piece.king ? ' king' : '') + '"></div>' : '';
           const highlight = isLastMoveSquare(lastMove, r, c) ? ' last-move' : '';
           html += '<div class="square ' + (dark ? 'dark' : 'light') + highlight + '">' + pieceHtml + '</div>';
         }
@@ -509,6 +511,9 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
 }
 
 export function renderPlayerPage(roomCode: string, origin: string): string {
+  const playUrl = `${origin}/play/${roomCode}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(playUrl)}`;
+
   const style = `
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
     #app { width: 100%; max-width: 420px; text-align: center; }
@@ -535,13 +540,17 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     .csquare.last-move { box-shadow: inset 0 0 0 4px var(--amber); }
     .csquare.selectable::after { content: ''; position: absolute; inset: 18%; border-radius: 50%; background: rgba(240,165,39,0.55); }
     .csquare.selected { outline: 3px solid var(--amber); outline-offset: -3px; }
-    .cpiece { width: 78%; height: 78%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.6); box-sizing: border-box; }
-    .cpiece.white { background: #f5f3ee; border: 3px solid #2a2a2a; }
-    .cpiece.black { background: #1c1c1c; border: 3px solid #000; }
-    .cpiece.king { display: flex; align-items: center; justify-content: center; font-size: 14px; }
-    .cpiece.king.white { color: #8a6420; }
-    .cpiece.king.black { color: #f0a527; }
-    .board-stage.flipped .cpiece.king { transform: rotate(180deg); }
+    .cpiece { width: 78%; height: 78%; border-radius: 50%; position: relative; box-sizing: border-box; box-shadow: 0 3px 6px rgba(0,0,0,0.55), inset 0 2px 3px rgba(255,255,255,0.25), inset 0 -3px 5px rgba(0,0,0,0.35); }
+    .cpiece::before { content: ''; position: absolute; inset: 15%; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); }
+    .cpiece.white { background: radial-gradient(circle at 35% 28%, #ffffff 0%, #eae6da 55%, #cac2ab 100%); border: 3px solid #2a2a2a; }
+    .cpiece.black { background: radial-gradient(circle at 35% 28%, #4c4c4c 0%, #222 55%, #0a0a0a 100%); border: 3px solid #000; }
+    .cpiece.white::before { border-color: rgba(0,0,0,0.2); }
+    .cpiece.black::before { border-color: rgba(255,255,255,0.14); }
+    .cpiece.king::after { content: ''; position: absolute; inset: 32%; border-radius: 50%; background: var(--amber); box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.4); }
+    .join-card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin: 16px auto; max-width: 280px; }
+    .join-code { font-size: 28px; font-weight: 700; letter-spacing: 3px; color: var(--amber); font-family: 'Space Grotesk', sans-serif; margin: 8px 0 14px; }
+    .join-qr { width: 160px; margin: 0 auto; border-radius: 10px; overflow: hidden; }
+    .join-qr img { display: block; width: 100%; }
   `;
 
   const body = `
@@ -554,6 +563,7 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
   </div>
   <script>
     const roomCode = ${JSON.stringify(roomCode)};
+    const qrUrl = ${JSON.stringify(qrUrl)};
     const content = document.getElementById('content');
     const optClasses = ['opt-a', 'opt-b', 'opt-c', 'opt-d'];
     let ws = null;
@@ -610,12 +620,25 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     function renderForGameState() {
       if (!currentState) return;
       if (currentState.gameType === 'checkers') {
-        if (currentState.phase === 'checkers-lobby' || currentState.phase === 'checkers-setup') {
-          content.innerHTML = '<p class="status">⚫ Kabe — oota, kuni host alustab mängu...</p>';
+        if (currentState.phase === 'checkers-setup') {
+          content.innerHTML = '<p class="status">⚫ Kabe — oota, kuni host valib mängurežiimi...</p>';
+        } else if (currentState.phase === 'checkers-lobby') {
+          renderCheckersWaiting();
         } else if (currentState.checkers && (currentState.phase === 'checkers-playing' || currentState.phase === 'checkers-ended')) {
           renderCheckers(currentState.checkers, null);
         }
       }
+    }
+
+    function renderCheckersWaiting() {
+      const waitingText = currentState.players.length < 2 ? 'Oota teist mängijat...' : 'Mäng algab...';
+      content.innerHTML = '<p class="status" style="margin-bottom:4px;">⚫ Kabe</p>' +
+        '<p class="status" style="font-weight:600; color:var(--text);">' + waitingText + '</p>' +
+        '<div class="join-card">' +
+          '<p class="status" style="font-size:13px; margin:0 0 8px;">Teine mängija liitub siit:</p>' +
+          '<div class="join-code">' + roomCode + '</div>' +
+          '<div class="join-qr"><img src="' + qrUrl + '" alt="QR"></div>' +
+        '</div>';
     }
 
     function renderQuestion(msg) {
@@ -700,7 +723,6 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
         if (piece) {
           const pieceEl = document.createElement('div');
           pieceEl.className = 'cpiece ' + piece.color + (piece.king ? ' king' : '');
-          if (piece.king) pieceEl.textContent = '♛';
           sq.appendChild(pieceEl);
         }
         sq.onclick = () => onSquareTap(cs, r, c);

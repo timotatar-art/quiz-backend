@@ -59,6 +59,25 @@ export class GameRoom {
       return Response.json({ hostToken: this.state.hostToken });
     }
 
+    // Telefon-telefon kabe: tuba luuakse otse kahe mängija ooteruumina,
+    // ilma TV-d ja mängutüübi valikut vajamata.
+    if (url.pathname === "/internal/create-checkers-room" && request.method === "POST") {
+      this.state.createdAt = Date.now();
+      this.state.gameType = "checkers";
+      this.state.phase = "checkers-lobby";
+      this.state.checkers = {
+        mode: "two-player",
+        board: createInitialBoard(),
+        turn: "white",
+        playerColor: {},
+        winner: null,
+        lastMove: null,
+        mustContinueFrom: null,
+      };
+      await this.persist();
+      return Response.json({ ok: true });
+    }
+
     if (url.pathname === "/internal/set-topic" && request.method === "POST") {
       const body = (await request.json()) as { topic?: string };
       const topic = (body.topic ?? "").toString().trim().slice(0, 150);
@@ -83,6 +102,7 @@ export class GameRoom {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
+    let autoStarted = false;
 
     if (role === "tv") {
       const token = url.searchParams.get("token") ?? "";
@@ -117,6 +137,7 @@ export class GameRoom {
       }
       server.serializeAttachment({ role: "player", playerId: player.id, name: player.name } satisfies WsAttachment);
       server.send(JSON.stringify({ type: "you", playerId: player.id }));
+      autoStarted = this.maybeAutoStartCheckers();
       this.ctx.waitUntil(this.persist());
     } else {
       server.close(4000, "Tundmatu roll");
@@ -125,7 +146,25 @@ export class GameRoom {
 
     this.broadcastState();
     this.sendResumeIfNeeded(server);
+    if (autoStarted) this.broadcastCheckersState();
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Kui ollakse kahe mängija kabe ooteruumis (nt kaks telefoni ilma TV-ta,
+  // või TV loodud ooteruum) ja mõlemad mängijad on nüüd liitunud, alusta
+  // mängu kohe automaatselt - eraldi "Alusta mängu" käiku pole siin vaja.
+  private maybeAutoStartCheckers(): boolean {
+    if (this.state.gameType !== "checkers") return false;
+    if (this.state.phase !== "checkers-lobby") return false;
+    const cs = this.state.checkers;
+    if (!cs || cs.mode !== "two-player") return false;
+    if (this.state.players.length < 2) return false;
+    cs.playerColor = {
+      [this.state.players[0].id]: "white",
+      [this.state.players[1].id]: "black",
+    };
+    this.state.phase = "checkers-playing";
+    return true;
   }
 
   // Kui klient (TV või mängija) ühendub keset küsimust või tulemuste kuva,

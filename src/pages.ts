@@ -82,13 +82,14 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
     .funfact { color: var(--text-muted); margin-top: 16px; font-size: 16px; }
     .gametype-options { display: flex; gap: 20px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
     .gametype-btn { font-size: 20px; padding: 28px 36px; min-width: 200px; }
-    .board { display: grid; grid-template-columns: repeat(8, 1fr); width: min(64vh, 460px); margin: 20px auto; border: 4px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .board { display: grid; grid-template-columns: repeat(10, 1fr); width: min(64vh, 520px); margin: 20px auto; border: 4px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
     .square { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; }
     .square.light { background: #ead9b4; }
     .square.dark { background: #7a5230; }
-    .piece { width: 76%; height: 76%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .piece.white { background: radial-gradient(circle at 35% 30%, #fff, #c9c9c9); border: 2px solid #999; }
-    .piece.black { background: radial-gradient(circle at 35% 30%, #555, #0a0a0a); border: 2px solid #000; color: #fff; }
+    .square.last-move { box-shadow: inset 0 0 0 4px var(--amber); }
+    .piece { width: 78%; height: 78%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-size: 16px; box-sizing: border-box; }
+    .piece.white { background: #f5f3ee; border: 3px solid #2a2a2a; }
+    .piece.black { background: #1c1c1c; border: 3px solid #000; color: #f0a527; }
     .turn-indicator { font-size: 18px; margin: 10px 0 0; color: var(--text-muted); }
   `;
 
@@ -275,14 +276,20 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       document.getElementById('startCheckersBtn').onclick = () => ws.send(JSON.stringify({ type: 'start_checkers' }));
     }
 
-    function renderBoardSquares(board) {
+    function isLastMoveSquare(lastMove, r, c) {
+      if (!lastMove) return false;
+      return (lastMove.from[0] === r && lastMove.from[1] === c) || (lastMove.to[0] === r && lastMove.to[1] === c);
+    }
+
+    function renderBoardSquares(board, lastMove) {
       let html = '';
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
           const dark = (r + c) % 2 === 1;
           const piece = board[r][c];
           const pieceHtml = piece ? '<div class="piece ' + piece.color + '">' + (piece.king ? '♛' : '') + '</div>' : '';
-          html += '<div class="square ' + (dark ? 'dark' : 'light') + '">' + pieceHtml + '</div>';
+          const highlight = isLastMoveSquare(lastMove, r, c) ? ' last-move' : '';
+          html += '<div class="square ' + (dark ? 'dark' : 'light') + highlight + '">' + pieceHtml + '</div>';
         }
       }
       return html;
@@ -295,7 +302,7 @@ export function renderTvPage(roomCode: string, hostToken: string, origin: string
       content.innerHTML = \`
         <h2 style="margin-bottom:4px;">⚫ Kabe</h2>
         <p class="turn-indicator">\${cs.winner ? winnerText : (cs.turn === 'white' ? '⚪ Valge käik' : '⚫ Musta käik')}</p>
-        <div class="board">\${renderBoardSquares(cs.board)}</div>
+        <div class="board">\${renderBoardSquares(cs.board, cs.lastMove)}</div>
         \${cs.winner ? '<button id="restartCheckersBtn" style="margin-top:16px;">🔁 Mängi uuesti</button>' : ''}
       \`;
       if (cs.winner) {
@@ -516,24 +523,25 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
     .opt-btn.correct { background: var(--green) !important; color: #052912 !important; box-shadow: 0 0 0 4px #fff inset; }
     .opt-btn.wrong { opacity: 0.35; }
     .status { color: var(--text-muted); font-size: 16px; }
-    .board-stage { perspective: 900px; margin: 20px auto; width: min(92vw, 380px); }
-    .board-stage.flipped .board3d { transform: rotateX(52deg) rotate(180deg); }
+    .board-stage { margin: 16px auto; width: min(92vw, 400px); }
     .board3d {
-      display: grid; grid-template-columns: repeat(8, 1fr); transform-style: preserve-3d;
-      transform: rotateX(52deg); border: 3px solid var(--border); border-radius: 8px; overflow: hidden;
-      box-shadow: 0 25px 40px rgba(0,0,0,0.5);
+      display: grid; grid-template-columns: repeat(10, 1fr); border: 3px solid var(--border);
+      border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     }
+    .board-stage.flipped .board3d { transform: rotate(180deg); }
     .csquare { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; }
     .csquare.light { background: #ead9b4; }
     .csquare.dark { background: #7a5230; }
+    .csquare.last-move { box-shadow: inset 0 0 0 4px var(--amber); }
     .csquare.selectable::after { content: ''; position: absolute; inset: 18%; border-radius: 50%; background: rgba(240,165,39,0.55); }
     .csquare.selected { outline: 3px solid var(--amber); outline-offset: -3px; }
-    .cpiece { width: 76%; height: 76%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.5); }
-    .cpiece.white { background: radial-gradient(circle at 35% 30%, #fff, #c9c9c9); border: 2px solid #999; }
-    .cpiece.black { background: radial-gradient(circle at 35% 30%, #555, #0a0a0a); border: 2px solid #000; }
+    .cpiece { width: 78%; height: 78%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.6); box-sizing: border-box; }
+    .cpiece.white { background: #f5f3ee; border: 3px solid #2a2a2a; }
+    .cpiece.black { background: #1c1c1c; border: 3px solid #000; }
     .cpiece.king { display: flex; align-items: center; justify-content: center; font-size: 14px; }
     .cpiece.king.white { color: #8a6420; }
     .cpiece.king.black { color: #f0a527; }
+    .board-stage.flipped .cpiece.king { transform: rotate(180deg); }
   `;
 
   const body = `
@@ -641,7 +649,7 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
       content.innerHTML = '<h2>🏆 Mäng läbi!</h2><p class="status">Vaata lõpptulemust suurelt ekraanilt</p>';
     }
 
-    // --- Kabe (3D vaade, puutega käigud) ---
+    // --- Kabe (2D vaade, puutega käigud) ---
     let lastLegalMoves = [];
 
     function myCheckersColor(cs) {
@@ -670,8 +678,8 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
       if (!el) return;
       const myColor = myCheckersColor(cs);
       let html = '';
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
           const dark = (r + c) % 2 === 1;
           const piece = cs.board[r][c];
           const isSelected = selectedSquare && selectedSquare[0] === r && selectedSquare[1] === c;
@@ -680,7 +688,8 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
               ? lastLegalMoves.some(m => m.from[0] === selectedSquare[0] && m.from[1] === selectedSquare[1] && m.to[0] === r && m.to[1] === c)
               : (piece && piece.color === myColor && lastLegalMoves.some(m => m.from[0] === r && m.from[1] === c))
           );
-          html += '<div class="csquare ' + (dark ? 'dark' : 'light') + (isSelected ? ' selected' : '') + (isSelectable ? ' selectable' : '') + '" data-r="' + r + '" data-c="' + c + '"></div>';
+          const isLastMove = cs.lastMove && ((cs.lastMove.from[0] === r && cs.lastMove.from[1] === c) || (cs.lastMove.to[0] === r && cs.lastMove.to[1] === c));
+          html += '<div class="csquare ' + (dark ? 'dark' : 'light') + (isSelected ? ' selected' : '') + (isSelectable ? ' selectable' : '') + (isLastMove ? ' last-move' : '') + '" data-r="' + r + '" data-c="' + c + '"></div>';
         }
       }
       el.innerHTML = html;
@@ -726,6 +735,59 @@ export function renderPlayerPage(roomCode: string, origin: string): string {
         drawBoard(cs);
       }
     }
+  </script>
+  `;
+
+  return shell("Liitu kviisiga", body, style);
+}
+
+export function renderTopicPage(roomCode: string, origin: string): string {
+  const style = `
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    #app { width: 100%; max-width: 420px; text-align: center; }
+    textarea {
+      width: 100%; font-size: 17px; padding: 14px; margin-bottom: 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-raised); color: var(--text);
+      font-family: inherit; resize: vertical; min-height: 90px;
+    }
+    #submitBtn { width: 100%; font-size: 18px; padding: 14px; }
+    .status { color: var(--text-muted); font-size: 15px; margin-top: 14px; }
+    .hint { color: var(--text-muted); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  `;
+
+  const body = `
+  <div id="app">
+    <p style="color:var(--amber); display:flex; align-items:center; justify-content:center; gap:8px;"><img src="/logo.png" alt="" style="height:28px; width:28px; border-radius:6px;">LuVu Quiz · ${roomCode}</p>
+    <h2 style="margin: 16px 0 8px;">Vali teema</h2>
+    <p class="hint">Kirjuta, millest küsimusi soovid — nt "Euroopa ajalugu keskajast tänapaevani" või "automargid". AI genereerib selle põhjal küsimused suurele ekraanile.</p>
+    <div id="content">
+      <textarea id="topicInput" placeholder="Sinu teema..." maxlength="150"></textarea>
+      <button id="submitBtn">Salvesta teema</button>
+      <p class="status" id="status"></p>
+    </div>
+  </div>
+  <script>
+    const roomCode = ${JSON.stringify(roomCode)};
+    document.getElementById('submitBtn').onclick = async () => {
+      const topic = document.getElementById('topicInput').value.trim();
+      const statusEl = document.getElementById('status');
+      if (!topic) {
+        statusEl.textContent = 'Kirjuta enne midagi.';
+        return;
+      }
+      statusEl.textContent = 'Salvestan...';
+      try {
+        const res = await fetch('/api/topic/' + roomCode, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ topic }),
+        });
+        if (!res.ok) throw new Error('fail');
+        statusEl.textContent = '✅ Teema salvestatud! Võid selle vahekaardi sulgeda — mäng algab suurel ekraanil, kui host vajutab "Alusta mängu".';
+      } catch (e) {
+        statusEl.textContent = 'Midagi läks valesti, proovi uuesti.';
+      }
+    };
   </script>
   `;
 

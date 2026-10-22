@@ -1,6 +1,6 @@
 import type { RoomState, Env, WsAttachment, Question, CheckersMove, CheckersColor } from "./types";
 import { generateQuestions, drawFromBank, addToLibrary } from "./questions";
-import { createInitialBoard, getLegalMoves, getCapturesForPiece, applyMove, checkWinner, chooseAiMove } from "./checkers";
+import { createInitialBoard, getLegalMoves, applyMove, checkWinner, chooseAiMove } from "./checkers";
 
 function randomId(len = 8): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -514,11 +514,17 @@ export class GameRoom {
   private applyCheckersMove(move: CheckersMove) {
     const cs = this.state.checkers;
     if (!cs) return;
+    // Kui tegu on juba käimasoleva löömisahela jätkuga, säilita visualiseerimiseks
+    // terve käigu algne lähtekoht (mitte ainult viimase lõigu oma).
+    const isContinuation = cs.mustContinueFrom !== null;
     cs.board = applyMove(cs.board, move);
-    cs.lastMove = move;
+    cs.lastMove = isContinuation && cs.lastMove ? { ...move, from: cs.lastMove.from } : move;
 
     if (move.captured) {
-      const further = getCapturesForPiece(cs.board, move.to[0], move.to[1]);
+      // Enamusreegli tõttu tuleb järgmise löögi lubatavust kontrollida
+      // getLegalMoves'iga (mitte ainult getCapturesForPiece'iga), et jätk
+      // jääks ikka parimasse võimalikku löömisahelasse.
+      const further = getLegalMoves(cs.board, cs.turn, move.to);
       if (further.length > 0) {
         cs.mustContinueFrom = move.to;
         return;
